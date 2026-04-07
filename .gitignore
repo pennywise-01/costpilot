@@ -1,0 +1,15 @@
+# CostPilot
+
+node_modules/
+dist/
+.env
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+postgres_data/
+mongodb_data/
+redis_data/
