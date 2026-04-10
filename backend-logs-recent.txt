@@ -1,0 +1,34 @@
+INFO:     172.18.0.5:49994 - "GET /api/v1/auth/me HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:50004 - "GET /api/v1/auth/me HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:35448 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     172.18.0.5:35456 - "GET /api/v1/organizations HTTP/1.1" 200 OK
+INFO:     172.18.0.5:35462 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     172.18.0.5:35478 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     172.18.0.5:35492 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/summary HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:35506 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/cloud-accounts HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:35504 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/cache-status HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:35514 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/resources?limit=5 HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:35522 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/recommendations HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:35518 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/breakdown?start_date=2026-03-10&end_date=2026-04-09&group_by=cloud HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:35536 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/summary HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:35550 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/cloud-accounts HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:35554 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/cache-status HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:35568 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/resources?limit=5 HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:35570 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/recommendations HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:35586 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/breakdown?start_date=2026-03-10&end_date=2026-04-09&group_by=cloud HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:44678 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     172.18.0.5:44688 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     172.18.0.5:44694 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/cache-status HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:44708 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/summary HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:44714 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/cloud-accounts HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:44726 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/resources?limit=5 HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:44746 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/recommendations HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:44732 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/breakdown?start_date=2026-03-10&end_date=2026-04-09&group_by=cloud HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:44758 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/cache-status HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:44764 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/summary HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:44772 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/cloud-accounts HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:44776 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/resources?limit=5 HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:44788 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/recommendations HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:44782 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/breakdown?start_date=2026-03-10&end_date=2026-04-09&group_by=cloud HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:53700 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/cloud-accounts HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:53710 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/cloud-accounts HTTP/1.1" 500 Internal Server Error

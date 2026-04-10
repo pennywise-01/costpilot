@@ -291,6 +291,22 @@ class AzureAdapter(CloudAdapter):
             result = client.query.usage(scope=scope, parameters=query)
             return self._parse_cost_result(result)
         except HttpResponseError as e:
+            if e.status_code == 429:
+                # Extract Retry-After header if present
+                retry_after = 10  # Default 10 seconds
+                if hasattr(e, 'response') and e.response:
+                    retry_after = int(e.response.headers.get('Retry-After', 10))
+                
+                logger.warning(
+                    f"[DEBUG] Azure rate limited (429). Retry-After: {retry_after}s"
+                )
+                # Sleep to respect rate limit
+                import time
+                time.sleep(retry_after)
+                # Retry once
+                result = client.query.usage(scope=scope, parameters=query)
+                return self._parse_cost_result(result)
+            
             if e.status_code == 401 or e.status_code == 403:
                 raise BadRequestError(
                     "Azure credentials lack Cost Management permissions. "

@@ -3,6 +3,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 import aiosmtplib
+import boto3
+from botocore.exceptions import ClientError
 
 from app.config import settings
 from app.shared.enums import NotificationType
@@ -226,6 +228,45 @@ RENDERERS: dict[NotificationType, callable] = {
 
 
 async def send_email(to: str, subject: str, html_body: str) -> None:
+    """Send an email via configured provider (SMTP or SES). Raises on failure."""
+    if settings.EMAIL_PROVIDER == "ses":
+        await send_email_ses(to, subject, html_body)
+    else:
+        await send_email_smtp(to, subject, html_body)
+
+
+async def send_email_ses(to: str, subject: str, html_body: str) -> None:
+    """Send an email via AWS SES. Raises on failure."""
+    ses_client = boto3.client(
+        "ses",
+        region_name=settings.AWS_REGION,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+    )
+
+    try:
+        response = ses_client.send_email(
+            Source=settings.SES_FROM_EMAIL,
+            Destination={"ToAddresses": [to]},
+            Message={
+                "Subject": {"Data": subject, "Charset": "UTF-8"},
+                "Body": {"Html": {"Data": html_body, "Charset": "UTF-8"}},
+            },
+        )
+        logger.info(
+            "SES email sent to %s: %s (MessageId: %s)",
+            to,
+            subject,
+            response.get("MessageId"),
+        )
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        error_message = e.response["Error"]["Message"]
+        logger.error("SES email failed: %s - %s", error_code, error_message)
+        raise
+
+
+async def send_email_smtp(to: str, subject: str, html_body: str) -> None:
     """Send an email via SMTP. Raises on failure."""
     msg = MIMEMultipart("alternative")
     msg["From"] = settings.SMTP_FROM
@@ -241,4 +282,4 @@ async def send_email(to: str, subject: str, html_body: str) -> None:
         username=settings.SMTP_USER or None,
         password=settings.SMTP_PASSWORD or None,
     )
-    logger.info("Email sent to %s: %s", to, subject)
+    logger.info("SMTP email sent to %s: %s", to, subject)

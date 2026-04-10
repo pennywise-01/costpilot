@@ -34,6 +34,7 @@ dependencies = [
     "google-cloud-storage>=2.14.0",
     "google-cloud-resource-manager>=1.17.0",
     "google-cloud-bigquery>=3.14.0",
+    "google-cloud-functions>=1.15.0",
     "google-auth>=2.25.0",
     "google-api-python-client>=2.100.0",
     "aiosmtplib>=3.0.0",

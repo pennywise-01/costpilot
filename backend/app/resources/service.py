@@ -305,10 +305,10 @@ async def get_resource(
     
     if not account:
         return None
-    
+
     # Get all resources and find the matching one with coalescing
-    adapters = await _get_cloud_accounts_with_adapters(account.organization_id)
-    
+    adapters, failures = await _get_cloud_accounts_with_adapters(account.organization_id)
+
     for acc, adapter in adapters:
         if acc.id != cloud_account_id:
             continue

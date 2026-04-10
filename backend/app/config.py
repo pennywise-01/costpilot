@@ -52,8 +52,18 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = "noreply@costpilot.io"
 
+    # Email Provider Selection
+    EMAIL_PROVIDER: str = "smtp"  # "smtp" or "ses"
+
+    # AWS SES Configuration
+    AWS_REGION: str = "us-east-1"  # AWS region for SES (must match where identity is verified)
+    AWS_ACCESS_KEY_ID: str = ""  # IAM user access key for SES
+    AWS_SECRET_ACCESS_KEY: str = ""  # IAM user secret access key for SES
+    SES_FROM_EMAIL: str = "noreply@costpilot.io"  # Verified SES sender email
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    FRONTEND_BASE_URL: str = "http://localhost:5173"
 
     # Security Settings
     # Request Validation
@@ -117,7 +127,7 @@ class Settings(BaseSettings):
 
     # Request Coalescing
     REQUEST_COALESCING_ENABLED: bool = True
-    REQUEST_COALESCING_MAX_WAIT_SECONDS: float = 45.0  # Max wait for coalesced requests
+    REQUEST_COALESCING_MAX_WAIT_SECONDS: float = 180.0  # Max wait for coalesced requests (must be >= longest endpoint timeout)
     
     # Audit Logging
     AUDIT_LOG_ENABLED: bool = True

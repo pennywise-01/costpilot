@@ -5,7 +5,7 @@ blocking on CSP API calls.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import (
@@ -180,7 +180,11 @@ class CostCacheStatus(Base):
         """Check if cache is healthy (recent successful collection)."""
         if not self.last_successful_collection:
             return False
-        hours_since = (utc_now() - self.last_successful_collection).total_seconds() / 3600
+        # Ensure both datetimes are timezone-aware
+        last_time = self.last_successful_collection
+        if last_time.tzinfo is None:
+            last_time = last_time.replace(tzinfo=timezone.utc)
+        hours_since = (utc_now() - last_time).total_seconds() / 3600
         return hours_since < 24  # Consider healthy if updated within 24 hours
 
     def get_health_status(self) -> str:
@@ -188,7 +192,11 @@ class CostCacheStatus(Base):
         if not self.last_successful_collection:
             return "uninitialized"
 
-        hours_since = (utc_now() - self.last_successful_collection).total_seconds() / 3600
+        # Ensure both datetimes are timezone-aware
+        last_time = self.last_successful_collection
+        if last_time.tzinfo is None:
+            last_time = last_time.replace(tzinfo=timezone.utc)
+        hours_since = (utc_now() - last_time).total_seconds() / 3600
 
         if hours_since < 6:
             return "healthy"

@@ -1,0 +1,19 @@
+Adding missing columns to user_activity_logs...
+✅ Added updated_at
+✅ Added deleted_at
+✅ Added version_id
+✅ Added updated_at trigger
+✅ Added deleted_at index
+
+✅ user_activity_logs table schema fixed!
+Adding analytics enum values to cloudtype...
+✅ Added 'bigquery' to cloudtype enum
+✅ Added 'redshift' to cloudtype enum
+✅ Added 'athena' to cloudtype enum
+✅ Added 'synapse' to cloudtype enum
+Adding data_source_config column to cloud_accounts...
+✅ Added data_source_config column
+Adding last_schema_sync column to cloud_accounts...
+✅ Added last_schema_sync column
+
+✅ Analytics connector schema migration complete!

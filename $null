@@ -1,0 +1,2 @@
+psql: unrecognized option: - Checking audit logs ---;
+psql: hint: Try "psql --help" for more information.

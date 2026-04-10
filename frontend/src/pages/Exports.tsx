@@ -11,7 +11,7 @@ import {
   Table,
   Tag,
   Typography,
-  message,
+  App,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { DownloadOutlined, PlayCircleOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -51,6 +51,7 @@ const STATUS_COLORS: Record<ExportStatus, string> = {
 
 const Exports: FC = () => {
   const orgId = useCurrentOrgId();
+  const { message } = App.useApp();
   const [jobs, setJobs] = useState<ExportJob[]>([]);
   const [loading, setLoading] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -295,11 +296,14 @@ const Exports: FC = () => {
         open={createModalOpen}
         onCancel={() => {
           setCreateModalOpen(false);
-          form.resetFields();
+          if (createModalOpen) {
+            form.resetFields();
+          }
         }}
         onOk={handleCreate}
         okText="Create"
         confirmLoading={creating}
+        destroyOnClose
       >
         <Form
           form={form}

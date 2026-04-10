@@ -9,6 +9,11 @@ export const CLOUD_TYPE_LABELS: Record<string, string> = {
   environment: 'Environment',
   nebius: 'Nebius',
   databricks: 'Databricks',
+  // Analytics connectors
+  bigquery: 'GCP BigQuery',
+  redshift: 'AWS Redshift',
+  athena: 'AWS Athena',
+  synapse: 'Azure Synapse Analytics',
 };
 
 export const CLOUD_TYPE_COLORS: Record<string, string> = {
@@ -20,6 +25,11 @@ export const CLOUD_TYPE_COLORS: Record<string, string> = {
   nebius: '#5C2D91',
   databricks: '#FF3621',
   environment: '#52c41a',
+  // Analytics connectors
+  bigquery: '#4285F4',
+  redshift: '#FF9900',
+  athena: '#527FFF',
+  synapse: '#0078D4',
 };
 
 export const POOL_PURPOSE_LABELS: Record<string, string> = {

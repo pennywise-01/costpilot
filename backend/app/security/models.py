@@ -1,5 +1,6 @@
 """Models for security audit logging."""
 
+import uuid
 from datetime import datetime
 from typing import Optional
 from sqlalchemy import (
@@ -9,7 +10,6 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Index,
-    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,13 +18,13 @@ from app.database import Base
 
 class AuditLog(Base):
     """Audit log entry for security events."""
-    
+
     __tablename__ = "audit_logs"
-    
+
     id: Mapped[str] = mapped_column(
         String(36),
         primary_key=True,
-        default=lambda: str(func.uuid_generate_v4())
+        default=lambda: str(uuid.uuid4())
     )
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -95,11 +95,11 @@ class SecurityAlert(Base):
     """Real-time security events for alerting."""
     
     __tablename__ = "security_alerts"
-    
+
     id: Mapped[str] = mapped_column(
         String(36),
         primary_key=True,
-        default=lambda: str(func.uuid_generate_v4())
+        default=lambda: str(uuid.uuid4())
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

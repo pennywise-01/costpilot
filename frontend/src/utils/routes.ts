@@ -1,6 +1,7 @@
 export const ROUTES = {
   LOGIN: '/login',
   REGISTER: '/register',
+  ACCEPT_INVITATION: '/accept-invitation/:token',
   DASHBOARD: '/',
   EXPENSES: '/expenses',
   RECOMMENDATIONS: '/recommendations',

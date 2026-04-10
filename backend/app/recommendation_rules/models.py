@@ -20,11 +20,11 @@ class RecommendationRule(BaseModel, OptimisticLockingMixin):
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     category: Mapped[str] = mapped_column(String(64), nullable=False, default="cost")
     severity: Mapped[RecommendationSeverity] = mapped_column(
-        SAEnum(RecommendationSeverity), nullable=False, default=RecommendationSeverity.MEDIUM
+        SAEnum(RecommendationSeverity, name="recommendationseverity", values_callable=lambda e: [x.value for x in e]), nullable=False, default=RecommendationSeverity.MEDIUM
     )
     action_description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     saving_type: Mapped[SavingType] = mapped_column(
-        SAEnum(SavingType), nullable=False, default=SavingType.FIXED
+        SAEnum(SavingType, name="savingtype", values_callable=lambda e: [x.value for x in e]), nullable=False, default=SavingType.FIXED
     )
     saving_value: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
@@ -36,7 +36,7 @@ class RecommendationRule(BaseModel, OptimisticLockingMixin):
 class RecommendationRuleCondition(BaseModel, OptimisticLockingMixin):
     __tablename__ = "recommendation_rule_conditions"
 
-    type: Mapped[ConditionType] = mapped_column(SAEnum(ConditionType), nullable=False)
+    type: Mapped[ConditionType] = mapped_column(SAEnum(ConditionType, name="conditiontype", values_callable=lambda e: [x.value for x in e]), nullable=False)
     rule_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("recommendation_rules.id"), nullable=False
     )

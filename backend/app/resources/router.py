@@ -54,7 +54,7 @@ async def resources_list(
 
 
 @router.get(
-    "/resources/{resource_id}",
+    "/resources/{resource_id:path}",
     response_model=ResourceDetail,
 )
 async def resource_detail(

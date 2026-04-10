@@ -488,8 +488,9 @@ async def create_invitation(
     return UserInviteResponse(
         id=invitation.id,
         email=invitation.email,
-        status="sent",
-        expires_at=invitation.expires_at
+        invitation_token=token,
+        status=InvitationStatus.PENDING.value,
+        expires_at=invitation.expires_at,
     )
 
 

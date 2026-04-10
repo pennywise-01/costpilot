@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Row,
   Col,
@@ -139,6 +140,7 @@ const cloudTagColor: Record<string, string> = {
 /* -------------------------------------------------------------------------- */
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const orgId = useCurrentOrgId();
   const queryClient = useQueryClient();
   
@@ -801,9 +803,9 @@ const Dashboard: React.FC = () => {
             style={cardStyle}
             styles={{ body: { paddingBottom: 12 } }}
             extra={
-              <Link href="/resources" style={{ fontSize: 13 }}>
+              <span onClick={() => navigate('/resources')} style={{ fontSize: 13, cursor: 'pointer', color: '#1677ff' }}>
                 View all resources <RightOutlined style={{ fontSize: 10 }} />
-              </Link>
+              </span>
             }
           >
             {resourcesLoading ? (
@@ -832,9 +834,9 @@ const Dashboard: React.FC = () => {
             title="Recommendations Summary"
             style={cardStyle}
             extra={
-              <Link href="/recommendations" style={{ fontSize: 13 }}>
+              <span onClick={() => navigate('/recommendations')} style={{ fontSize: 13, cursor: 'pointer', color: '#1677ff' }}>
                 View all <RightOutlined style={{ fontSize: 10 }} />
-              </Link>
+              </span>
             }
           >
             {/* Total savings header */}
@@ -922,9 +924,9 @@ const Dashboard: React.FC = () => {
             title="Pools Requiring Attention"
             style={cardStyle}
             extra={
-              <Link href="/pools" style={{ fontSize: 13 }}>
+              <span onClick={() => navigate('/pools')} style={{ fontSize: 13, cursor: 'pointer', color: '#1677ff' }}>
                 Manage pools <RightOutlined style={{ fontSize: 10 }} />
-              </Link>
+              </span>
             }
           >
             <Empty
@@ -940,9 +942,9 @@ const Dashboard: React.FC = () => {
             title="Cloud Accounts"
             style={cardStyle}
             extra={
-              <Link href="/accounts" style={{ fontSize: 13 }}>
+              <span onClick={() => navigate('/accounts')} style={{ fontSize: 13, cursor: 'pointer', color: '#1677ff' }}>
                 Manage accounts <RightOutlined style={{ fontSize: 10 }} />
-              </Link>
+              </span>
             }
           >
             {cloudAccountsLoading || (cloudAccountsList?.length > 0 && cloudAccountsLiveLoading) ? (

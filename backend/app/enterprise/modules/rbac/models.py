@@ -38,10 +38,10 @@ class RolePermission(BaseModel, OptimisticLockingMixin):
         String(36), ForeignKey("rbac_roles.id"), nullable=False, index=True
     )
     action: Mapped[PermissionAction] = mapped_column(
-        SAEnum(PermissionAction), nullable=False
+        SAEnum(PermissionAction, name="permissionaction", values_callable=lambda e: [x.value for x in e]), nullable=False
     )
     resource_type: Mapped[RBACResourceType] = mapped_column(
-        SAEnum(RBACResourceType), nullable=False
+        SAEnum(RBACResourceType, name="rbacresourcetype", values_callable=lambda e: [x.value for x in e]), nullable=False
     )
 
     role: Mapped["Role"] = relationship("Role", back_populates="permissions")
@@ -89,14 +89,14 @@ class ABACPolicy(BaseModel, OptimisticLockingMixin):
         String(36), ForeignKey("organizations.id"), nullable=False, index=True
     )
     resource_type: Mapped[RBACResourceType] = mapped_column(
-        SAEnum(RBACResourceType), nullable=False
+        SAEnum(RBACResourceType, name="rbacresourcetype", values_callable=lambda e: [x.value for x in e]), nullable=False
     )
     action: Mapped[PermissionAction] = mapped_column(
-        SAEnum(PermissionAction), nullable=False
+        SAEnum(PermissionAction, name="permissionaction", values_callable=lambda e: [x.value for x in e]), nullable=False
     )
     attribute_key: Mapped[str] = mapped_column(String(256), nullable=False)
     operator: Mapped[ABACOperator] = mapped_column(
-        SAEnum(ABACOperator), nullable=False
+        SAEnum(ABACOperator, name="abacoperator", values_callable=lambda e: [x.value for x in e]), nullable=False
     )
     attribute_value: Mapped[str] = mapped_column(Text, nullable=False)
     effect_allow: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -119,7 +119,9 @@ class AccessReview(BaseModel, OptimisticLockingMixin):
         String(36), ForeignKey("rbac_roles.id"), nullable=False
     )
     status: Mapped[AccessReviewStatus] = mapped_column(
-        SAEnum(AccessReviewStatus), default=AccessReviewStatus.PENDING, nullable=False
+        SAEnum(AccessReviewStatus, name="accessreviewstatus", values_callable=lambda e: [x.value for x in e]),
+        default=AccessReviewStatus.PENDING,
+        nullable=False
     )
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
 

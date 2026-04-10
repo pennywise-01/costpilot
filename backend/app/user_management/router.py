@@ -62,6 +62,48 @@ def _is_secure_request(request: Request) -> bool:
     return request.url.scheme == "https"
 
 
+async def _send_invitation_email(
+    db: AsyncSession,
+    org_id: str,
+    inviter_id: str,
+    invitee_email: str,
+    invitation: UserInviteResponse,
+) -> None:
+    """Send an invitation email to the invitee with an acceptance link."""
+    from app.notifications.email_service import send_email
+    from app.organizations.models import Organization
+    from sqlalchemy import select
+
+    # Fetch organization name
+    org_result = await db.execute(
+        select(Organization).where(
+            Organization.id == org_id,
+            Organization.deleted_at.is_(None),
+        )
+    )
+    org = org_result.scalar_one_or_none()
+    org_name = org.name if org else "CostPilot"
+
+    # Build the acceptance URL using the invitation token (not the ID)
+    accept_url = f"{settings.FRONTEND_BASE_URL}/accept-invitation/{invitation.invitation_token}"
+
+    subject = f"Invitation to join {org_name} on CostPilot"
+    html_body = f"""
+    <h2>You've been invited to join {org_name}</h2>
+    <p>Hi,</p>
+    <p>You have been invited to join <strong>{org_name}</strong> on CostPilot.</p>
+    <p><strong>Email:</strong> {invitee_email}</p>
+    <p>Click the button below to accept the invitation and create your account.</p>
+    <p><a href="{accept_url}" class="btn">Accept Invitation</a></p>
+    <p style="margin-top:24px;color:#999;font-size:13px;">
+      If you did not expect this invitation, you can safely ignore this email.<br>
+      The invitation expires on {invitation.expires_at.strftime("%B %d, %Y at %H:%M UTC")}.
+    </p>
+    """
+
+    await send_email(invitee_email, subject, html_body)
+
+
 # ============== User List & Detail Endpoints ==============
 
 @router.get(
@@ -200,9 +242,20 @@ async def invite_user(
     db: AsyncSession = Depends(get_db),
 ):
     """Invite a new user to the organization."""
-    await create_invitation(db, org_id, current_user.id, data)
+    result = await create_invitation(db, org_id, current_user.id, data)
     await db.commit()
-    return {"success": True, "message": "Invitation sent successfully"}
+
+    # Send invitation email
+    try:
+        await _send_invitation_email(db, org_id, current_user.id, data.email, result)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Failed to send invitation email to %s for org %s: %s",
+            data.email, org_id, e, exc_info=True,
+        )
+
+    return result
 
 
 @router.post(

@@ -2,7 +2,7 @@
 
 from typing import TypeVar, Callable, Optional, Any, Protocol
 from functools import wraps
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 
 from fastapi import Response

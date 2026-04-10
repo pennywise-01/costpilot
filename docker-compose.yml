@@ -13,6 +13,12 @@ services:
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET required}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:?ENCRYPTION_KEY required}
       - CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+      # AWS SES Email Configuration
+      - EMAIL_PROVIDER=${EMAIL_PROVIDER:-smtp}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - SES_FROM_EMAIL=${SES_FROM_EMAIL:-noreply@costpilot.io}
     depends_on:
       postgres:
         condition: service_healthy

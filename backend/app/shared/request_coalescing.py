@@ -305,7 +305,10 @@ class CoalescedBatchExecutor(Generic[T]):
 # Cloud costs coalescer - combines identical cost queries
 cloud_costs_coalescer = RequestCoalescer(max_wait_seconds=45.0)
 
-# Resource discovery coalescer - combines identical resource queries  
+# Azure-specific coalescer - only ONE Azure cost query at a time to prevent rate limiting (429)
+azure_costs_coalescer = RequestCoalescer(max_wait_seconds=60.0)
+
+# Resource discovery coalescer - combines identical resource queries
 resource_discovery_coalescer = RequestCoalescer(max_wait_seconds=60.0)
 
 # Recommendations coalescer - combines identical recommendation queries
@@ -318,16 +321,36 @@ async def coalesce_cloud_costs(
     **kwargs: P.kwargs
 ) -> T:
     """Coalesce cloud cost API calls.
-    
+
     Args:
         func: Function to execute
         *args: Function arguments
         **kwargs: Function keyword arguments
-        
+
     Returns:
         Function result (shared with concurrent callers)
     """
     return await cloud_costs_coalescer.coalesce("cloud_costs", func, *args, **kwargs)
+
+
+async def coalesce_azure_costs(
+    func: Callable[P, T],
+    *args: P.args,
+    **kwargs: P.kwargs
+) -> T:
+    """Coalesce Azure cost API calls to prevent rate limiting (429).
+    
+    This ensures only ONE Azure cost query runs at a time.
+
+    Args:
+        func: Function to execute
+        *args: Function arguments
+        **kwargs: Function keyword arguments
+
+    Returns:
+        Function result (shared with concurrent callers)
+    """
+    return await azure_costs_coalescer.coalesce("azure_costs", func, *args, **kwargs)
 
 
 async def coalesce_resource_discovery(
@@ -354,13 +377,66 @@ async def coalesce_recommendations(
     **kwargs: P.kwargs
 ) -> T:
     """Coalesce recommendations API calls.
-    
+
     Args:
         func: Function to execute
         *args: Function arguments
         **kwargs: Function keyword arguments
-        
+
     Returns:
         Function result (shared with concurrent callers)
     """
     return await recommendations_coalescer.coalesce("recommendations", func, *args, **kwargs)
+
+
+# Analytics connector coalescers (prevent duplicate queries)
+
+bigquery_costs_coalescer = RequestCoalescer(max_wait_seconds=60.0)
+redshift_costs_coalescer = RequestCoalescer(max_wait_seconds=60.0)
+athena_costs_coalescer = RequestCoalescer(max_wait_seconds=60.0)
+synapse_costs_coalescer = RequestCoalescer(max_wait_seconds=60.0)
+
+
+async def coalesce_bigquery_costs(
+    func: Callable[P, T],
+    *args: P.args,
+    **kwargs: P.kwargs
+) -> T:
+    """Coalesce BigQuery cost API calls to prevent duplicate queries.
+
+    Args:
+        func: Function to execute
+        *args: Function arguments
+        **kwargs: Function keyword arguments
+
+    Returns:
+        Function result (shared with concurrent callers)
+    """
+    return await bigquery_costs_coalescer.coalesce("bigquery_costs", func, *args, **kwargs)
+
+
+async def coalesce_redshift_costs(
+    func: Callable[P, T],
+    *args: P.args,
+    **kwargs: P.kwargs
+) -> T:
+    """Coalesce Redshift cost API calls."""
+    return await redshift_costs_coalescer.coalesce("redshift_costs", func, *args, **kwargs)
+
+
+async def coalesce_athena_costs(
+    func: Callable[P, T],
+    *args: P.args,
+    **kwargs: P.kwargs
+) -> T:
+    """Coalesce Athena cost API calls."""
+    return await athena_costs_coalescer.coalesce("athena_costs", func, *args, **kwargs)
+
+
+async def coalesce_synapse_costs(
+    func: Callable[P, T],
+    *args: P.args,
+    **kwargs: P.kwargs
+) -> T:
+    """Coalesce Synapse cost API calls."""
+    return await synapse_costs_coalescer.coalesce("synapse_costs", func, *args, **kwargs)

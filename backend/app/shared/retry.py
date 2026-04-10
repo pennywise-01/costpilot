@@ -53,7 +53,20 @@ class RetryContext:
 
     def calculate_delay(self) -> float:
         """Calculate delay before next retry with exponential backoff."""
-        delay = self.config.base_delay * (self.config.exponential_base ** (self.attempt - 1))
+        # Check if the last error was a rate limit (429)
+        is_rate_limit = False
+        if self.errors:
+            last_error = str(self.errors[-1])
+            is_rate_limit = "429" in last_error or "Too many requests" in last_error or "rate limit" in last_error.lower()
+        
+        if is_rate_limit:
+            # Longer backoff for rate limits: 5s, 10s, 20s, 40s, 60s
+            delay = 5.0 * (2.0 ** (self.attempt - 1))
+            logger.warning(f"Rate limit error detected, using extended backoff")
+        else:
+            # Normal backoff: 1s, 2s, 4s, 8s, 16s
+            delay = self.config.base_delay * (self.config.exponential_base ** (self.attempt - 1))
+        
         delay = min(delay, self.config.max_delay)
 
         if self.config.jitter:
@@ -154,9 +167,9 @@ AWS_RETRY_CONFIG = RetryConfig(
 )
 
 AZURE_RETRY_CONFIG = RetryConfig(
-    max_attempts=4,
-    base_delay=2.0,
-    max_delay=60.0,
+    max_attempts=5,  # Increased from 4 to handle rate limits
+    base_delay=3.0,  # Increased from 2.0 for rate limit scenarios
+    max_delay=120.0,  # Increased from 60.0 to allow longer waits for 429
     retryable_exceptions=(ConnectionError, TimeoutError, CloudProviderException),
     jitter=True
 )
@@ -165,6 +178,40 @@ GCP_RETRY_CONFIG = RetryConfig(
     max_attempts=4,
     base_delay=1.5,
     max_delay=45.0,
+    retryable_exceptions=(ConnectionError, TimeoutError, CloudProviderException),
+    jitter=True
+)
+
+# Analytics connector retry configurations (longer delays for query platforms)
+
+BIGQUERY_RETRY_CONFIG = RetryConfig(
+    max_attempts=5,
+    base_delay=2.0,
+    max_delay=60.0,
+    retryable_exceptions=(ConnectionError, TimeoutError, CloudProviderException),
+    jitter=True
+)
+
+REDSHIFT_RETRY_CONFIG = RetryConfig(
+    max_attempts=5,
+    base_delay=3.0,
+    max_delay=120.0,
+    retryable_exceptions=(ConnectionError, TimeoutError, CloudProviderException),
+    jitter=True
+)
+
+ATHENA_RETRY_CONFIG = RetryConfig(
+    max_attempts=5,
+    base_delay=3.0,
+    max_delay=120.0,
+    retryable_exceptions=(ConnectionError, TimeoutError, CloudProviderException),
+    jitter=True
+)
+
+SYNAPSE_RETRY_CONFIG = RetryConfig(
+    max_attempts=5,
+    base_delay=3.0,
+    max_delay=120.0,
     retryable_exceptions=(ConnectionError, TimeoutError, CloudProviderException),
     jitter=True
 )

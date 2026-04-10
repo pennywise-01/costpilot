@@ -38,6 +38,7 @@ interface ProviderOption {
 }
 
 const providers: ProviderOption[] = [
+  // Cloud Service Providers (direct API)
   {
     key: 'aws_cnr',
     name: 'Amazon Web Services',
@@ -74,6 +75,31 @@ const providers: ProviderOption[] = [
     description: 'Connect your Nebius cloud account for cost tracking and optimization.',
     color: CLOUD_TYPE_COLORS.nebius,
   },
+  // Big Data Analytics Platforms (query normalized tables)
+  {
+    key: 'bigquery',
+    name: 'GCP BigQuery',
+    description: 'Query normalized billing data from GCP BigQuery tables instead of calling APIs.',
+    color: '#4285F4',
+  },
+  {
+    key: 'redshift',
+    name: 'AWS Redshift',
+    description: 'Query normalized billing data from AWS Redshift tables via Data API.',
+    color: '#FF9900',
+  },
+  {
+    key: 'athena',
+    name: 'AWS Athena',
+    description: 'Query normalized billing data from AWS Athena tables (CUR export to S3).',
+    color: '#527FFF',
+  },
+  {
+    key: 'synapse',
+    name: 'Azure Synapse Analytics',
+    description: 'Query normalized billing data from Azure Synapse Analytics tables.',
+    color: '#0078D4',
+  },
 ];
 
 const awsRegions = [
@@ -106,6 +132,46 @@ const buildConfig = (provider: string, values: Record<string, string>): Record<s
       return {
         project_id: values.projectId,
         service_account_key: values.serviceAccountKey,
+      };
+    // Analytics connectors
+    case 'bigquery':
+      return {
+        project_id: values.projectId,
+        dataset_id: values.datasetId,
+        table_name: values.tableName,
+        service_account_key: values.serviceAccountKey,
+        location: values.location || 'US',
+      };
+    case 'redshift':
+      return {
+        cluster_id: values.clusterId,
+        database: values.database || 'dev',
+        table_name: values.tableName,
+        host: values.host,
+        port: values.port || '5439',
+        region: values.region || 'us-east-1',
+        iam_access_key_id: values.iamAccessKeyId,
+        iam_secret_access_key: values.iamSecretAccessKey,
+      };
+    case 'athena':
+      return {
+        database: values.database,
+        table_name: values.tableName,
+        s3_output_location: values.s3OutputLocation,
+        region: values.region || 'us-east-1',
+        workgroup: values.workgroup || 'primary',
+        iam_access_key_id: values.iamAccessKeyId,
+        iam_secret_access_key: values.iamSecretAccessKey,
+      };
+    case 'synapse':
+      return {
+        server: values.server,
+        database: values.database,
+        table_name: values.tableName,
+        tenant_id: values.tenantId,
+        client_id: values.clientId,
+        client_secret: values.clientSecret,
+        port: values.port || '1433',
       };
     default:
       try {
@@ -255,6 +321,192 @@ const ConnectCloudAccount: React.FC = () => {
                 visibilityToggle
                 style={{ fontFamily: 'monospace', fontSize: 12 }}
               />
+            </Form.Item>
+          </>
+        );
+      // Analytics connectors
+      case 'bigquery':
+        return (
+          <>
+            <Form.Item
+              name="projectId"
+              label="GCP Project ID"
+              rules={[{ required: true, message: 'Project ID is required' }]}
+            >
+              <Input placeholder="my-gcp-project" />
+            </Form.Item>
+            <Form.Item
+              name="datasetId"
+              label="BigQuery Dataset ID"
+              rules={[{ required: true, message: 'Dataset ID is required' }]}
+            >
+              <Input placeholder="cloud_billing" />
+            </Form.Item>
+            <Form.Item
+              name="tableName"
+              label="Billing Table Name"
+              rules={[{ required: true, message: 'Table name is required' }]}
+            >
+              <Input placeholder="gcp_billing_export" />
+            </Form.Item>
+            <Form.Item
+              name="serviceAccountKey"
+              label="Service Account Key (JSON)"
+              rules={[{ required: true, message: 'Service account key is required' }]}
+            >
+              <Input.Password
+                placeholder='Paste your BigQuery service account JSON key here'
+                visibilityToggle
+                style={{ fontFamily: 'monospace', fontSize: 12 }}
+              />
+            </Form.Item>
+            <Form.Item
+              name="location"
+              label="Dataset Location"
+              initialValue="US"
+            >
+              <Input placeholder="US" />
+            </Form.Item>
+          </>
+        );
+      case 'redshift':
+        return (
+          <>
+            <Form.Item
+              name="host"
+              label="Redshift Host"
+              rules={[{ required: true, message: 'Redshift host is required' }]}
+            >
+              <Input placeholder="my-cluster.xxxxxx.region.redshift.amazonaws.com" />
+            </Form.Item>
+            <Form.Item
+              name="database"
+              label="Database Name"
+              initialValue="dev"
+            >
+              <Input placeholder="dev" />
+            </Form.Item>
+            <Form.Item
+              name="tableName"
+              label="Billing Table Name"
+              rules={[{ required: true, message: 'Table name is required' }]}
+            >
+              <Input placeholder="aws_billing" />
+            </Form.Item>
+            <Form.Item
+              name="iamAccessKeyId"
+              label="IAM Access Key ID"
+              rules={[{ required: true, message: 'IAM Access Key ID is required' }]}
+            >
+              <Input placeholder="AKIAIOSFODNN7EXAMPLE" />
+            </Form.Item>
+            <Form.Item
+              name="iamSecretAccessKey"
+              label="IAM Secret Access Key"
+              rules={[{ required: true, message: 'IAM Secret Access Key is required' }]}
+            >
+              <Input.Password placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" />
+            </Form.Item>
+            <Form.Item
+              name="region"
+              label="AWS Region"
+              initialValue="us-east-1"
+            >
+              <Input placeholder="us-east-1" />
+            </Form.Item>
+          </>
+        );
+      case 'athena':
+        return (
+          <>
+            <Form.Item
+              name="database"
+              label="Athena Database"
+              rules={[{ required: true, message: 'Database is required' }]}
+            >
+              <Input placeholder="athena_billing" />
+            </Form.Item>
+            <Form.Item
+              name="tableName"
+              label="Billing Table Name"
+              rules={[{ required: true, message: 'Table name is required' }]}
+            >
+              <Input placeholder="aws_billing_cur" />
+            </Form.Item>
+            <Form.Item
+              name="s3OutputLocation"
+              label="S3 Output Location"
+              rules={[{ required: true, message: 'S3 output location is required' }]}
+            >
+              <Input placeholder="s3://my-bucket/athena-results/" />
+            </Form.Item>
+            <Form.Item
+              name="iamAccessKeyId"
+              label="IAM Access Key ID"
+              rules={[{ required: true, message: 'IAM Access Key ID is required' }]}
+            >
+              <Input placeholder="AKIAIOSFODNN7EXAMPLE" />
+            </Form.Item>
+            <Form.Item
+              name="iamSecretAccessKey"
+              label="IAM Secret Access Key"
+              rules={[{ required: true, message: 'IAM Secret Access Key is required' }]}
+            >
+              <Input.Password placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" />
+            </Form.Item>
+            <Form.Item
+              name="region"
+              label="AWS Region"
+              initialValue="us-east-1"
+            >
+              <Input placeholder="us-east-1" />
+            </Form.Item>
+          </>
+        );
+      case 'synapse':
+        return (
+          <>
+            <Form.Item
+              name="server"
+              label="Synapse Server"
+              rules={[{ required: true, message: 'Synapse server is required' }]}
+            >
+              <Input placeholder="my-synapse.sql.azuresynapse.net" />
+            </Form.Item>
+            <Form.Item
+              name="database"
+              label="Database Name"
+              rules={[{ required: true, message: 'Database is required' }]}
+            >
+              <Input placeholder="CloudCosts" />
+            </Form.Item>
+            <Form.Item
+              name="tableName"
+              label="Billing Table Name"
+              rules={[{ required: true, message: 'Table name is required' }]}
+            >
+              <Input placeholder="azure_billing" />
+            </Form.Item>
+            <Form.Item
+              name="tenantId"
+              label="Azure Tenant ID"
+              rules={[{ required: true, message: 'Tenant ID is required' }]}
+            >
+              <Input placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+            </Form.Item>
+            <Form.Item
+              name="clientId"
+              label="Service Principal Client ID"
+              rules={[{ required: true, message: 'Client ID is required' }]}
+            >
+              <Input placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+            </Form.Item>
+            <Form.Item
+              name="clientSecret"
+              label="Service Principal Client Secret"
+              rules={[{ required: true, message: 'Client Secret is required' }]}
+            >
+              <Input.Password placeholder="Service principal secret" />
             </Form.Item>
           </>
         );

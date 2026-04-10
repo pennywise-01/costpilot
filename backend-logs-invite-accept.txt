@@ -1,0 +1,23 @@
+INFO:     172.18.0.5:57982 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     172.18.0.5:57994 - "GET /api/v1/organizations HTTP/1.1" 200 OK
+INFO:     172.18.0.5:57996 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     172.18.0.5:58000 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     172.18.0.5:58014 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/cache-status HTTP/1.1" 200 OK
+INFO:     172.18.0.5:58036 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/cloud-accounts HTTP/1.1" 200 OK
+INFO:     172.18.0.5:58066 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/breakdown?start_date=2026-03-10&end_date=2026-04-09&group_by=cloud HTTP/1.1" 200 OK
+INFO:     172.18.0.5:58050 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/recommendations HTTP/1.1" 200 OK
+INFO:     172.18.0.5:58022 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/summary HTTP/1.1" 200 OK
+INFO:     172.18.0.5:41484 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/users?page=1&limit=20&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     172.18.0.5:41496 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/users?page=1&limit=20&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     172.18.0.5:44150 - "GET /api/v1/enterprise/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/rbac/roles HTTP/1.1" 200 OK
+INFO:     172.18.0.5:42248 - "POST /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/users/invite HTTP/1.1" 201 Created
+INFO:     172.18.0.5:42252 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/users?page=1&limit=20&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     172.18.0.5:42258 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/users?page=1&limit=20&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     172.18.0.5:58080 - "GET /api/v1/cloud-accounts/dc880fde-0db6-49bf-bf6c-a0148055c62c/live-data?force_refresh=false HTTP/1.1" 200 OK
+INFO:     172.18.0.5:34836 - "GET /api/v1/cloud-accounts/dc880fde-0db6-49bf-bf6c-a0148055c62c/cost-history?days=30 HTTP/1.1" 200 OK
+INFO:     172.18.0.5:58042 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/resources?limit=5 HTTP/1.1" 200 OK
+INFO:     172.18.0.5:34842 - "GET /api/v1/cloud-accounts/7d735827-a6cc-43b1-b9b5-42966ad929e0/live-data?force_refresh=false HTTP/1.1" 200 OK
+INFO:     172.18.0.5:53472 - "GET /api/v1/invitations/HlNoJO9TX8SxXt0djElaNuCWbZzRtTVdOf0BKt-assnwtBPLN69EX-Bg4XDGI_VK HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:53484 - "GET /api/v1/invitations/HlNoJO9TX8SxXt0djElaNuCWbZzRtTVdOf0BKt-assnwtBPLN69EX-Bg4XDGI_VK HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:58952 - "GET /api/v1/invitations/HlNoJO9TX8SxXt0djElaNuCWbZzRtTVdOf0BKt-assnwtBPLN69EX-Bg4XDGI_VK HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.5:58960 - "GET /api/v1/invitations/HlNoJO9TX8SxXt0djElaNuCWbZzRtTVdOf0BKt-assnwtBPLN69EX-Bg4XDGI_VK HTTP/1.1" 500 Internal Server Error

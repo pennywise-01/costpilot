@@ -32,7 +32,7 @@ class Rule(BaseModel, OptimisticLockingMixin):
 class Condition(BaseModel, OptimisticLockingMixin):
     __tablename__ = "conditions"
 
-    type: Mapped[ConditionType] = mapped_column(SAEnum(ConditionType), nullable=False)
+    type: Mapped[ConditionType] = mapped_column(SAEnum(ConditionType, name="conditiontype", values_callable=lambda e: [x.value for x in e]), nullable=False)
     rule_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("rules.id"), nullable=False
     )

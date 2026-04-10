@@ -261,7 +261,7 @@ const RecommendationRules: React.FC = () => {
         okText={editingRule ? 'Save' : 'Create'}
         confirmLoading={createMutation.isPending || updateMutation.isPending}
         width={640}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={form}

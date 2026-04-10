@@ -2,6 +2,7 @@ import enum
 
 
 class CloudType(str, enum.Enum):
+    # Cloud Service Providers (direct API)
     AWS = "aws_cnr"
     AZURE = "azure_cnr"
     AZURE_TENANT = "azure_tenant"
@@ -9,9 +10,13 @@ class CloudType(str, enum.Enum):
     GCP_TENANT = "gcp_tenant"
     ALIBABA = "alibaba_cnr"
     KUBERNETES = "kubernetes_cnr"
-    ENVIRONMENT = "environment"
     NEBIUS = "nebius"
     DATABRICKS = "databricks"
+    # Big Data Analytics Platforms (query normalized tables)
+    BIGQUERY = "bigquery"       # GCP BigQuery
+    REDSHIFT = "redshift"       # AWS Redshift
+    ATHENA = "athena"           # AWS Athena
+    SYNAPSE = "synapse"         # Azure Synapse Analytics
 
 
 class PoolPurpose(str, enum.Enum):

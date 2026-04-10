@@ -174,7 +174,7 @@ class AuditLogger:
         sanitized_details = self._sanitize_details(action_details or {})
 
         event = {
-            "timestamp": utc_now().isoformat(),
+            "timestamp": utc_now(),
             "event_type": event_type.name,
             "severity": severity.value,
             "user_id": user_id,

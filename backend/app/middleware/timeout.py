@@ -46,39 +46,42 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
 
     def _get_timeout_for_path(self, path: str) -> float:
         """Get appropriate timeout for endpoint."""
-        if path.startswith("/api/v1/resources"):
+        # Strip query string for path matching
+        clean_path = path.split("?")[0]
+
+        if clean_path.startswith("/api/v1/resources"):
             return 60.0
 
         # Enterprise export routes are nested under /api/v1/enterprise but should
         # use the export timeout budget.
-        if path.startswith("/api/v1/enterprise") and "/exports" in path:
+        if clean_path.startswith("/api/v1/enterprise") and "/exports" in clean_path:
             return self.endpoint_timeouts.get("/api/v1/export", 300.0)
 
         # Check for special nested paths first (organizations/{id}/expenses pattern)
         # These need to be checked before generic /organizations prefix
-        path_parts = path.split('/')
-        
+        path_parts = clean_path.split('/')
+
         # Check for /api/v1/organizations/{org_id}/expenses pattern
         if len(path_parts) >= 6 and path_parts[3] == "organizations" and path_parts[5] == "expenses":
             return 90.0
-        
+
         # Check for /api/v1/organizations/{org_id}/resources pattern
         if len(path_parts) >= 6 and path_parts[3] == "organizations" and path_parts[5] == "resources":
-            return 60.0
-            
+            return 90.0
+
         # Check for /api/v1/organizations/{org_id}/recommendations pattern
         if len(path_parts) >= 6 and path_parts[3] == "organizations" and path_parts[5] == "recommendations":
-            return 60.0
-            
+            return 90.0
+
         # Check for /api/v1/organizations/{org_id}/cloud-accounts pattern
         if len(path_parts) >= 6 and path_parts[3] == "organizations" and path_parts[5] == "cloud-accounts":
-            return 45.0
-        
+            return 90.0
+
         # Find the most specific matching prefix for other paths
         matching_prefixes = [
             (prefix, timeout)
             for prefix, timeout in self.endpoint_timeouts.items()
-            if path.startswith(prefix)
+            if clean_path.startswith(prefix)
         ]
 
         if matching_prefixes:

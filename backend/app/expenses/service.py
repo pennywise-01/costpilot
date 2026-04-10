@@ -24,7 +24,7 @@ from app.expenses.schemas import (
 )
 from app.shared.crypto import decrypt
 from app.shared.enums import CloudType
-from app.shared.request_coalescing import coalesce_cloud_costs
+from app.shared.request_coalescing import coalesce_cloud_costs, coalesce_azure_costs
 from app.shared.utils.time import utc_now
 
 logger = logging.getLogger(__name__)
@@ -133,19 +133,35 @@ async def _fetch_cost_summary_with_coalescing(
     async def fetch_single_account(account: CloudAccount, adapter) -> dict | None:
         """Fetch cost summary for a single account with timeout."""
         try:
-            logger.info(f"[DEBUG] Calling get_monthly_cost_summary for account: {account.name} (type: {account.type})")
-            # Use coalescing for expensive cost API calls with per-account timeout
-            summary = await asyncio.wait_for(
-                coalesce_cloud_costs(adapter.get_monthly_cost_summary),
-                timeout=20.0  # 20 seconds per account max
-            )
+            logger.info(f"[DEBUG] Calling get_monthly_cost_summary for account: {account.name} (id: {account.id}, type: {account.type})")
+            
+            # Use Azure-specific coalescer to prevent rate limiting (429)
+            if account.type in [CloudType.AZURE, CloudType.AZURE_TENANT]:
+                logger.info(f"[DEBUG] Using Azure coalescer for {account.name}")
+                summary = await asyncio.wait_for(
+                    coalesce_azure_costs(adapter.get_monthly_cost_summary),
+                    timeout=20.0  # 20 seconds per account max
+                )
+            else:
+                # Use coalescing for expensive cost API calls with per-account timeout
+                summary = await asyncio.wait_for(
+                    coalesce_cloud_costs(adapter.get_monthly_cost_summary),
+                    timeout=20.0  # 20 seconds per account max
+                )
+            
             logger.info(f"[DEBUG] Cost summary for {account.name}: this_month={summary.get('this_month')}, last_month={summary.get('last_month')}, forecast={summary.get('forecast')}")
+            
+            # Add delay after Azure API calls to prevent rate limiting (429 errors)
+            if account.type in [CloudType.AZURE, CloudType.AZURE_TENANT]:
+                logger.info(f"[DEBUG] Adding 3s delay after Azure API call to prevent rate limiting")
+                await asyncio.sleep(3)
+            
             return summary
         except asyncio.TimeoutError:
-            logger.warning(f"[DEBUG] Timeout fetching cost summary for account {account.name}")
+            logger.warning(f"[DEBUG] Timeout fetching cost summary for account {account.name} (id: {account.id}, type: {account.type})")
             return None
         except Exception as e:
-            logger.error(f"[DEBUG] Error fetching costs for account {account.name}: {e}", exc_info=True)
+            logger.error(f"[DEBUG] Error fetching costs for account {account.name} (id: {account.id}, type: {account.type}): {e}", exc_info=True)
             return None
     
     # Fetch all accounts in parallel with individual timeouts
@@ -153,17 +169,28 @@ async def _fetch_cost_summary_with_coalescing(
         fetch_single_account(account, adapter)
         for account, adapter in adapters
     ]
-    
+
     results = await asyncio.gather(*tasks, return_exceptions=True)
-    
-    for result in results:
+
+    successful_accounts = 0
+    failed_accounts = []
+
+    for i, result in enumerate(results):
         if isinstance(result, dict):
             this_month_total += result.get("this_month", 0)
             last_month_total += result.get("last_month", 0)
             forecast_total += result.get("forecast", 0)
+            successful_accounts += 1
         elif isinstance(result, Exception):
-            logger.error(f"Unexpected error fetching cost summary: {result}")
-    
+            failed_account = adapters[i][0] if i < len(adapters) else "unknown"
+            failed_accounts.append(f"{failed_account.name} ({failed_account.type})")
+            logger.error(f"Failed to fetch costs for account: {failed_account.name} (id: {failed_account.id})")
+
+    logger.info(
+        f"[DEBUG] Expense summary aggregation: {successful_accounts}/{len(adapters)} accounts successful, "
+        f"failed: {failed_accounts}"
+    )
+
     return this_month_total, last_month_total, forecast_total
 
 

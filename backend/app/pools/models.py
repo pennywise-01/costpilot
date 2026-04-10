@@ -53,7 +53,7 @@ class PoolPolicy(BaseModel, OptimisticLockingMixin):
     __tablename__ = "pool_policies"
 
     type: Mapped[ConstraintType] = mapped_column(
-        SAEnum(ConstraintType), nullable=False
+        SAEnum(ConstraintType, name="constrainttype", values_callable=lambda e: [x.value for x in e]), nullable=False
     )
     limit: Mapped[int] = mapped_column(Integer, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

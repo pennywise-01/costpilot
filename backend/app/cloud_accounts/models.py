@@ -9,7 +9,10 @@ class CloudAccount(BaseModel, OptimisticLockingMixin):
     __tablename__ = "cloud_accounts"
 
     name: Mapped[str] = mapped_column(String(256), nullable=False)
-    type: Mapped[CloudType] = mapped_column(SAEnum(CloudType), nullable=False)
+    type: Mapped[CloudType] = mapped_column(
+        SAEnum(CloudType, values_callable=lambda e: [x.value for x in e]),
+        nullable=False
+    )
     config: Mapped[str] = mapped_column(Text, nullable=False)
     organization_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("organizations.id"), nullable=False, index=True

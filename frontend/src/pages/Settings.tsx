@@ -17,6 +17,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { useCurrentOrgId } from '@/hooks/useCurrentOrgId';
 import { notificationsApi } from '@/api/notifications';
+import { organizationsApi } from '@/api/organizations';
 
 const { Title, Text } = Typography;
 
@@ -121,13 +122,39 @@ const ProfileTab: React.FC = () => {
 };
 
 const OrganizationTab: React.FC = () => {
+  const orgId = useCurrentOrgId();
   const [form] = Form.useForm();
+  const [loading, setLoading] = useState(true);
 
-  const handleSave = () => {
-    form.validateFields().then(() => {
-      message.success('Organization settings saved');
-    });
-  };
+  useEffect(() => {
+    if (!orgId) return;
+    
+    const loadOrganization = async () => {
+      try {
+        const { data } = await organizationsApi.get(orgId);
+        form.setFieldsValue({
+          orgName: data.name,
+          currency: data.currency,
+        });
+      } catch {
+        message.error('Failed to load organization details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOrganization();
+  }, [orgId, form]);
+
+  if (loading) {
+    return (
+      <Card>
+        <div style={{ textAlign: 'center', padding: 48 }}>
+          <Spin />
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -136,20 +163,15 @@ const OrganizationTab: React.FC = () => {
         <Form
           form={form}
           {...formLayout}
-          initialValues={{
-            orgName: 'Acme Corp',
-            currency: 'USD',
-          }}
         >
           <Form.Item
             name="orgName"
             label="Organization Name"
-            rules={[{ required: true, message: 'Please enter the organization name' }]}
           >
-            <Input />
+            <Input disabled />
           </Form.Item>
           <Form.Item name="currency" label="Currency">
-            <Select>
+            <Select disabled>
               <Select.Option value="USD">USD - US Dollar</Select.Option>
               <Select.Option value="EUR">EUR - Euro</Select.Option>
               <Select.Option value="GBP">GBP - British Pound</Select.Option>
@@ -158,42 +180,7 @@ const OrganizationTab: React.FC = () => {
               <Select.Option value="CAD">CAD - Canadian Dollar</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item wrapperCol={{ offset: 6, span: 18 }}>
-            <Button type="primary" onClick={handleSave}>
-              Save Changes
-            </Button>
-          </Form.Item>
         </Form>
-      </Card>
-
-      <Card
-        title="Danger Zone"
-        style={{ borderColor: '#ff4d4f' }}
-        styles={{ header: { color: '#ff4d4f' } }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div>
-            <Text strong>Delete Organization</Text>
-            <br />
-            <Text type="secondary">
-              Permanently delete this organization and all associated data. This action cannot be undone.
-            </Text>
-          </div>
-          <Button danger type="primary">
-            Delete Organization
-          </Button>
-        </div>
-        <Divider style={{ margin: '16px 0' }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <Text strong>Disable Organization</Text>
-            <br />
-            <Text type="secondary">
-              Temporarily disable the organization. Members will lose access until re-enabled.
-            </Text>
-          </div>
-          <Switch />
-        </div>
       </Card>
     </>
   );

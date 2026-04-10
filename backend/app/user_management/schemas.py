@@ -125,6 +125,7 @@ class UserInviteResponse(BaseModel):
     """Response for invitation creation."""
     id: str
     email: str
+    invitation_token: str  # Token used in acceptance URL
     status: str  # "sent" or "failed"
     error: str | None = None
     expires_at: datetime

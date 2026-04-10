@@ -205,7 +205,41 @@ gcp_circuit_breaker = CircuitBreaker(
     expected_exceptions=(Exception,)
 )
 
+# Analytics connector circuit breakers (longer recovery for analytics platforms)
+
+bigquery_circuit_breaker = CircuitBreaker(
+    name="bigquery-api",
+    failure_threshold=5,
+    recovery_timeout=120.0,
+    expected_exceptions=(Exception,)
+)
+
+redshift_circuit_breaker = CircuitBreaker(
+    name="redshift-api",
+    failure_threshold=5,
+    recovery_timeout=120.0,
+    expected_exceptions=(Exception,)
+)
+
+athena_circuit_breaker = CircuitBreaker(
+    name="athena-api",
+    failure_threshold=5,
+    recovery_timeout=120.0,
+    expected_exceptions=(Exception,)
+)
+
+synapse_circuit_breaker = CircuitBreaker(
+    name="synapse-api",
+    failure_threshold=5,
+    recovery_timeout=120.0,
+    expected_exceptions=(Exception,)
+)
+
 # Register circuit breakers
 CircuitBreakerRegistry.register("aws-api", aws_circuit_breaker)
 CircuitBreakerRegistry.register("azure-api", azure_circuit_breaker)
 CircuitBreakerRegistry.register("gcp-api", gcp_circuit_breaker)
+CircuitBreakerRegistry.register("bigquery-api", bigquery_circuit_breaker)
+CircuitBreakerRegistry.register("redshift-api", redshift_circuit_breaker)
+CircuitBreakerRegistry.register("athena-api", athena_circuit_breaker)
+CircuitBreakerRegistry.register("synapse-api", synapse_circuit_breaker)

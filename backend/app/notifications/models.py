@@ -17,7 +17,7 @@ class NotificationPreference(BaseModel, OptimisticLockingMixin):
         String(36), ForeignKey("organizations.id"), nullable=False, index=True
     )
     notification_type: Mapped[NotificationType] = mapped_column(
-        SAEnum(NotificationType), nullable=False
+        SAEnum(NotificationType, name="notificationtype", values_callable=lambda e: [x.value for x in e]), nullable=False
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
@@ -32,7 +32,7 @@ class NotificationLog(BaseModel):
         String(36), ForeignKey("organizations.id"), nullable=False, index=True
     )
     notification_type: Mapped[NotificationType] = mapped_column(
-        SAEnum(NotificationType), nullable=False
+        SAEnum(NotificationType, name="notificationtype", values_callable=lambda e: [x.value for x in e]), nullable=False
     )
     recipient_email: Mapped[str] = mapped_column(String(256), nullable=False)
     subject: Mapped[str] = mapped_column(String(512), nullable=False)

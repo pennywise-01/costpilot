@@ -34,7 +34,7 @@ class SecurityEvent(BaseModel):
 
     user_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     event_type: Mapped[SecurityEventType] = mapped_column(
-        SAEnum(SecurityEventType, name="securityeventtype"),
+        SAEnum(SecurityEventType, name="securityeventtype", values_callable=lambda e: [x.value for x in e]),
         nullable=False,
         index=True,
     )
@@ -56,7 +56,7 @@ class SessionBinding(BaseModel):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     revoke_reason: Mapped[SessionRevokeReason | None] = mapped_column(
-        SAEnum(SessionRevokeReason, name="sessionrevokereason"), nullable=True
+        SAEnum(SessionRevokeReason, name="sessionrevokereason", values_callable=lambda e: [x.value for x in e]), nullable=True
     )
 
 

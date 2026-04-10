@@ -1,6 +1,6 @@
 """User Management models for user lifecycle and access control."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, func
@@ -48,8 +48,12 @@ class UserInvitation(BaseModel, OptimisticLockingMixin):
     
     def is_expired(self) -> bool:
         """Check if invitation has expired."""
-        return utc_now() > self.expires_at
-    
+        expires = self.expires_at
+        # Ensure both datetimes are timezone-aware
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        return utc_now() > expires
+
     def is_valid(self) -> bool:
         """Check if invitation is still valid (pending and not expired)."""
         return self.status == InvitationStatus.PENDING and not self.is_expired()
