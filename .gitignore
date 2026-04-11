@@ -17,3 +17,5 @@ plans/
 *.png
 docs/
 docs-website/
+backend/tests/
+frontend/tests/
