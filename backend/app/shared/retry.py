@@ -7,11 +7,62 @@ from typing import Callable, Optional, TypeVar, Any
 from functools import wraps
 from datetime import timedelta
 
-from app.shared.exceptions import RetryExhaustedError, CloudProviderException
+from app.shared.exceptions import RetryExhaustedError, CloudProviderException, RateLimitException
 from app.shared.utils.time import utc_now
 
 logger = logging.getLogger(__name__)
 T = TypeVar('T')
+
+
+# Retryable HTTP status codes for CSP errors
+_RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+
+# AWS error codes that are transient/retryable
+_RETRYABLE_AWS_CODES = {
+    "ThrottlingException", "Throttling", "RequestLimitExceeded",
+    "ServiceUnavailable", "InternalError", "SlowDown",
+    "RequestTimeout", "PriorRequestNotComplete",
+}
+
+
+def is_retryable_csp_error(error: Exception) -> bool:
+    """Determine if a CSP error is transient and worth retrying.
+    
+    Checks both exception type and error code/message to decide retryability.
+    This handles cases where CSP SDKs raise generic exceptions with
+    retryable error codes embedded in the error details.
+    """
+    # Always retry connection and timeout errors
+    if isinstance(error, (ConnectionError, TimeoutError, asyncio.TimeoutError)):
+        return True
+    
+    # CloudProviderException: respect the retryable flag explicitly
+    if isinstance(error, CloudProviderException):
+        return error.retryable
+    
+    # Check for HTTP status code in error attributes
+    status_code = getattr(error, "status_code", None) or getattr(error, "statusCode", None)
+    if status_code and int(status_code) in _RETRYABLE_STATUS_CODES:
+        return True
+    
+    # Check for response attribute with status code (boto3 ClientError)
+    response = getattr(error, "response", None)
+    if isinstance(response, dict):
+        http_status = response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+        if http_status and int(http_status) in _RETRYABLE_STATUS_CODES:
+            return True
+        # Check AWS error code
+        error_code = response.get("Error", {}).get("Code", "")
+        if error_code in _RETRYABLE_AWS_CODES:
+            return True
+    
+    
+    # Check error message for rate limit indicators
+    error_str = str(error).lower()
+    if any(indicator in error_str for indicator in ("429", "rate limit", "too many requests", "throttl")):
+        return True
+    
+    return False
 
 
 class RetryConfig:
@@ -49,7 +100,11 @@ class RetryContext:
         """Check if we should retry based on error type and attempts."""
         if self.attempt >= self.config.max_attempts:
             return False
-        return isinstance(error, self.config.retryable_exceptions)
+        # First check explicit exception type list
+        if isinstance(error, self.config.retryable_exceptions):
+            return True
+        # Then check CSP-specific retryability heuristics
+        return is_retryable_csp_error(error)
 
     def calculate_delay(self) -> float:
         """Calculate delay before next retry with exponential backoff."""
@@ -157,20 +212,40 @@ def retry(
 
 
 # CSP-specific retry configurations
+# Note: is_retryable_csp_error() provides additional heuristic-based retryability
+# checking beyond these explicit exception types.
+
+try:
+    from botocore.exceptions import ClientError as BotoClientError
+    _AWS_EXCEPTIONS = (ConnectionError, TimeoutError, CloudProviderException, RateLimitException, BotoClientError)
+except ImportError:
+    _AWS_EXCEPTIONS = (ConnectionError, TimeoutError, CloudProviderException, RateLimitException)
+
+try:
+    from azure.core.exceptions import HttpResponseError as AzureHttpResponseError
+    _AZURE_EXCEPTIONS = (ConnectionError, TimeoutError, CloudProviderException, RateLimitException, AzureHttpResponseError)
+except ImportError:
+    _AZURE_EXCEPTIONS = (ConnectionError, TimeoutError, CloudProviderException, RateLimitException)
+
+try:
+    from google.api_core.exceptions import GoogleAPIError, ServiceUnavailable as GCPServiceUnavailable
+    _GCP_EXCEPTIONS = (ConnectionError, TimeoutError, CloudProviderException, RateLimitException, GoogleAPIError)
+except ImportError:
+    _GCP_EXCEPTIONS = (ConnectionError, TimeoutError, CloudProviderException, RateLimitException)
 
 AWS_RETRY_CONFIG = RetryConfig(
     max_attempts=5,
     base_delay=1.0,
     max_delay=30.0,
-    retryable_exceptions=(ConnectionError, TimeoutError, CloudProviderException),
+    retryable_exceptions=_AWS_EXCEPTIONS,
     jitter=True
 )
 
 AZURE_RETRY_CONFIG = RetryConfig(
-    max_attempts=5,  # Increased from 4 to handle rate limits
-    base_delay=3.0,  # Increased from 2.0 for rate limit scenarios
-    max_delay=120.0,  # Increased from 60.0 to allow longer waits for 429
-    retryable_exceptions=(ConnectionError, TimeoutError, CloudProviderException),
+    max_attempts=5,
+    base_delay=3.0,
+    max_delay=120.0,
+    retryable_exceptions=_AZURE_EXCEPTIONS,
     jitter=True
 )
 
@@ -178,7 +253,7 @@ GCP_RETRY_CONFIG = RetryConfig(
     max_attempts=4,
     base_delay=1.5,
     max_delay=45.0,
-    retryable_exceptions=(ConnectionError, TimeoutError, CloudProviderException),
+    retryable_exceptions=_GCP_EXCEPTIONS,
     jitter=True
 )
 
@@ -188,7 +263,7 @@ BIGQUERY_RETRY_CONFIG = RetryConfig(
     max_attempts=5,
     base_delay=2.0,
     max_delay=60.0,
-    retryable_exceptions=(ConnectionError, TimeoutError, CloudProviderException),
+    retryable_exceptions=_GCP_EXCEPTIONS,
     jitter=True
 )
 
@@ -196,7 +271,7 @@ REDSHIFT_RETRY_CONFIG = RetryConfig(
     max_attempts=5,
     base_delay=3.0,
     max_delay=120.0,
-    retryable_exceptions=(ConnectionError, TimeoutError, CloudProviderException),
+    retryable_exceptions=_AWS_EXCEPTIONS,
     jitter=True
 )
 
@@ -204,7 +279,7 @@ ATHENA_RETRY_CONFIG = RetryConfig(
     max_attempts=5,
     base_delay=3.0,
     max_delay=120.0,
-    retryable_exceptions=(ConnectionError, TimeoutError, CloudProviderException),
+    retryable_exceptions=_AWS_EXCEPTIONS,
     jitter=True
 )
 
@@ -212,6 +287,6 @@ SYNAPSE_RETRY_CONFIG = RetryConfig(
     max_attempts=5,
     base_delay=3.0,
     max_delay=120.0,
-    retryable_exceptions=(ConnectionError, TimeoutError, CloudProviderException),
+    retryable_exceptions=_AZURE_EXCEPTIONS,
     jitter=True
 )

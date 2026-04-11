@@ -10,10 +10,24 @@ from app.cloud_accounts.schemas import CloudAccountCreate, CloudAccountUpdate
 from app.cloud_accounts.adapters.aws import AWSAdapter
 from app.cloud_accounts.adapters.azure import AzureAdapter
 from app.cloud_accounts.adapters.gcp import GCPAdapter
+from app.cloud_accounts.adapters.analytics_base import AnalyticsAdapterBase
 from app.shared.exceptions import NotFoundError, BadRequestError
 from app.shared.crypto import encrypt, decrypt
 from app.shared.enums import CloudType
 from app.shared.utils.time import utc_now
+
+
+# Adapter registry for analytics types (lazy imports to avoid
+# ImportError when optional SDK packages are not installed)
+ANALYTICS_ADAPTER_MAP: dict[CloudType, str] = {
+    CloudType.ATHENA: "app.cloud_accounts.adapters.athena.AthenaAdapter",
+    CloudType.BIGQUERY: "app.cloud_accounts.adapters.bigquery.BigQueryAdapter",
+    CloudType.REDSHIFT: "app.cloud_accounts.adapters.redshift.RedshiftAdapter",
+    CloudType.SYNAPSE: "app.cloud_accounts.adapters.synapse.SynapseAdapter",
+}
+
+ANALYTICS_TYPES = set(ANALYTICS_ADAPTER_MAP.keys())
+CSP_TYPES = {CloudType.AWS, CloudType.AZURE, CloudType.GCP}
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +52,9 @@ async def create_cloud_account(
         except BadRequestError:
             raise
         except Exception as e:
-            raise BadRequestError(f"Failed to validate AWS credentials: {str(e)}")
+            sanitized = AnalyticsAdapterBase.sanitize_connection_error(e, data.config)
+            logger.warning(f"AWS credential validation failed: {sanitized}")
+            raise BadRequestError("Failed to validate AWS credentials. Check server logs for details.")
     elif data.type == CloudType.AZURE:
         try:
             adapter = AzureAdapter(data.config)
@@ -48,7 +64,9 @@ async def create_cloud_account(
         except BadRequestError:
             raise
         except Exception as e:
-            raise BadRequestError(f"Failed to validate Azure credentials: {str(e)}")
+            sanitized = AnalyticsAdapterBase.sanitize_connection_error(e, data.config)
+            logger.warning(f"Azure credential validation failed: {sanitized}")
+            raise BadRequestError("Failed to validate Azure credentials. Check server logs for details.")
     elif data.type == CloudType.GCP:
         # Handle both 'credentials_json' and 'service_account_key' field names from frontend
         config = dict(data.config)
@@ -65,8 +83,24 @@ async def create_cloud_account(
             logger.warning("GCP credential validation failed")
             raise
         except Exception as e:
-            logger.exception("Unexpected error during GCP credential validation")
-            raise BadRequestError(f"Failed to validate GCP credentials: {str(e)}")
+            sanitized = AnalyticsAdapterBase.sanitize_connection_error(e, config)
+            logger.warning(f"GCP credential validation failed: {sanitized}")
+            raise BadRequestError("Failed to validate GCP credentials. Check server logs for details.")
+    elif data.type in ANALYTICS_ADAPTER_MAP:
+        import importlib
+        module_path, class_name = ANALYTICS_ADAPTER_MAP[data.type].rsplit(".", 1)
+        adapter_cls = getattr(importlib.import_module(module_path), class_name)
+        try:
+            adapter = adapter_cls(data.config)
+            result = await adapter.validate_credentials()
+            account_id = data.config.get("cluster_id") or data.config.get("project_id") or data.config.get("server") or account_id
+            permission_warnings = result.get("permission_warnings", [])
+        except BadRequestError:
+            raise
+        except Exception as e:
+            sanitized = AnalyticsAdapterBase.sanitize_connection_error(e, data.config)
+            logger.warning(f"Analytics credential validation failed for {data.type}: {sanitized}")
+            raise BadRequestError(f"Failed to validate {data.type.value} credentials. Check server logs for details.")
 
     # Use normalized config for storage (with credentials_json key)
     storage_config = config if data.type == CloudType.GCP else data.config
@@ -86,7 +120,7 @@ async def create_cloud_account(
 async def list_cloud_accounts(
     db: AsyncSession, org_id: str, offset: int = 0, limit: int = 50
 ) -> tuple[list[CloudAccount], int]:
-    logger.info(f"[DEBUG] list_cloud_accounts called with org_id={org_id}")
+    logger.debug(f"list_cloud_accounts called with org_id={org_id}")
 
     # Get total count
     from sqlalchemy import func
@@ -109,7 +143,7 @@ async def list_cloud_accounts(
         .limit(limit)
     )
     accounts = list(result.scalars().all())
-    logger.info(f"[DEBUG] Query returned {len(accounts)} accounts for org_id={org_id}")
+    logger.debug(f"Query returned {len(accounts)} accounts for org_id={org_id}")
     return accounts, total
 
 
@@ -150,37 +184,49 @@ async def delete_cloud_account(db: AsyncSession, ca_id: str) -> None:
     await db.flush()
 
 
+def _get_adapter(cloud_account: CloudAccount):
+    """Instantiate the correct adapter for a cloud account."""
+    config = json.loads(decrypt(cloud_account.config))
+
+    if cloud_account.type == CloudType.AWS:
+        return AWSAdapter(config)
+    elif cloud_account.type == CloudType.AZURE:
+        return AzureAdapter(config)
+    elif cloud_account.type == CloudType.GCP:
+        return GCPAdapter(config)
+    elif cloud_account.type in ANALYTICS_ADAPTER_MAP:
+        import importlib
+        module_path, class_name = ANALYTICS_ADAPTER_MAP[cloud_account.type].rsplit(".", 1)
+        module = importlib.import_module(module_path)
+        adapter_cls = getattr(module, class_name)
+        return adapter_cls(config)
+    else:
+        return None
+
+
 async def get_cloud_account_resources(cloud_account: CloudAccount, limit: int = 50) -> list[dict]:
     """Get resources for a specific cloud account from the cloud provider.
     
     This is called for the cloud account details page, so we include costs.
     """
-    from app.cloud_accounts.adapters.aws import AWSAdapter
-    from app.cloud_accounts.adapters.azure import AzureAdapter
-    from app.cloud_accounts.adapters.gcp import GCPAdapter
-    from app.shared.crypto import decrypt
-    from app.shared.enums import CloudType
     import logging
-    
     logger = logging.getLogger(__name__)
     
-    if cloud_account.type not in (CloudType.AWS, CloudType.AZURE, CloudType.GCP):
+    if cloud_account.type not in CSP_TYPES and cloud_account.type not in ANALYTICS_TYPES:
         return []
     
     try:
-        config = json.loads(decrypt(cloud_account.config))
-        
+        adapter = _get_adapter(cloud_account)
+        if adapter is None:
+            return []
+
         if cloud_account.type == CloudType.AWS:
-            adapter = AWSAdapter(config)
             resources = await adapter.discover_resources()
-        elif cloud_account.type == CloudType.AZURE:
-            adapter = AzureAdapter(config)
-            # Include costs for cloud account details page
+        elif cloud_account.type in (CloudType.AZURE, CloudType.GCP):
             resources = await adapter.discover_resources(include_costs=True)
-        else:  # GCP
-            adapter = GCPAdapter(config)
-            # Include costs for cloud account details page
-            resources = await adapter.discover_resources(include_costs=True)
+        else:
+            # Analytics adapters
+            resources = await adapter.discover_resources()
         
         # Format resources for the response
         result = []
@@ -204,27 +250,16 @@ async def get_cloud_account_resources(cloud_account: CloudAccount, limit: int = 
 
 async def get_cloud_account_cost_history(cloud_account: CloudAccount, days: int = 30) -> list[dict]:
     """Get daily cost history for a specific cloud account from the cloud provider."""
-    from app.cloud_accounts.adapters.aws import AWSAdapter
-    from app.cloud_accounts.adapters.azure import AzureAdapter
-    from app.cloud_accounts.adapters.gcp import GCPAdapter
-    from app.shared.crypto import decrypt
-    from app.shared.enums import CloudType
     import logging
-    
     logger = logging.getLogger(__name__)
     
-    if cloud_account.type not in (CloudType.AWS, CloudType.AZURE, CloudType.GCP):
+    if cloud_account.type not in CSP_TYPES and cloud_account.type not in ANALYTICS_TYPES:
         return []
     
     try:
-        config = json.loads(decrypt(cloud_account.config))
-        
-        if cloud_account.type == CloudType.AWS:
-            adapter = AWSAdapter(config)
-        elif cloud_account.type == CloudType.AZURE:
-            adapter = AzureAdapter(config)
-        else:  # GCP
-            adapter = GCPAdapter(config)
+        adapter = _get_adapter(cloud_account)
+        if adapter is None:
+            return []
         
         # Calculate date range
         end_date = utc_now().date()
@@ -243,15 +278,11 @@ async def get_cloud_account_cost_history(cloud_account: CloudAccount, days: int 
 
 async def get_cloud_account_summary(cloud_account: CloudAccount) -> dict:
     """Get summary info (resource count, monthly cost) for a cloud account."""
-    from app.cloud_accounts.adapters.aws import AWSAdapter
-    from app.cloud_accounts.adapters.azure import AzureAdapter
-    from app.shared.crypto import decrypt
-    from app.shared.enums import CloudType
     import logging
 
     logger = logging.getLogger(__name__)
 
-    logger.info(f"[DEBUG] get_cloud_account_summary called for account {cloud_account.id} ({cloud_account.name}, type: {cloud_account.type})")
+    logger.debug(f"get_cloud_account_summary called for account {cloud_account.id} ({cloud_account.name}, type: {cloud_account.type})")
 
     result = {
         "resources_count": 0,
@@ -262,47 +293,41 @@ async def get_cloud_account_summary(cloud_account: CloudAccount) -> dict:
         "cost_data_available": False,
     }
 
-    if cloud_account.type not in (CloudType.AWS, CloudType.AZURE, CloudType.GCP):
-        logger.warning(f"[DEBUG] Unsupported cloud type: {cloud_account.type}")
+    if cloud_account.type not in CSP_TYPES and cloud_account.type not in ANALYTICS_TYPES:
+        logger.warning(f"Unsupported cloud type: {cloud_account.type}")
         return result
 
     try:
-        config = json.loads(decrypt(cloud_account.config))
-        logger.info(f"[DEBUG] Config loaded for account {cloud_account.id}, has keys: {list(config.keys())}")
-
-        if cloud_account.type == CloudType.AWS:
-            adapter = AWSAdapter(config)
-        elif cloud_account.type == CloudType.AZURE:
-            adapter = AzureAdapter(config)
-        else:  # GCP
-            adapter = GCPAdapter(config)
+        adapter = _get_adapter(cloud_account)
+        if adapter is None:
+            return result
 
         # Get resource count
         try:
-            logger.info(f"[DEBUG] Discovering resources for account {cloud_account.id} ({cloud_account.type})")
+            logger.debug(f"Discovering resources for account {cloud_account.id} ({cloud_account.type})")
             resources = await adapter.discover_resources()
             result["resources_count"] = len(resources)
             result["resources_data_available"] = True
-            logger.info(f"[DEBUG] Found {len(resources)} resources for account {cloud_account.id}")
+            logger.debug(f"Found {len(resources)} resources for account {cloud_account.id}")
         except Exception as e:
-            logger.error(f"[DEBUG] Failed to get resources for {cloud_account.id}: {type(e).__name__}: {e}", exc_info=True)
+            logger.error(f"Failed to get resources for {cloud_account.id}: {type(e).__name__}: {e}", exc_info=True)
 
         # Get cost summary
         try:
-            logger.info(f"[DEBUG] Getting cost summary for account {cloud_account.id}")
+            logger.debug(f"Getting cost summary for account {cloud_account.id}")
             cost_summary = await adapter.get_monthly_cost_summary()
             result["monthly_cost"] = cost_summary.get("this_month", 0)
             result["forecast"] = cost_summary.get("forecast", 0)
             result["last_month_cost"] = cost_summary.get("last_month", 0)
             result["cost_data_available"] = True
-            logger.info(f"[DEBUG] Cost summary for {cloud_account.id}: monthly={result['monthly_cost']}, forecast={result['forecast']}")
+            logger.debug(f"Cost summary for {cloud_account.id}: monthly={result['monthly_cost']}, forecast={result['forecast']}")
         except Exception as e:
-            logger.error(f"[DEBUG] Failed to get costs for {cloud_account.id}: {type(e).__name__}: {e}", exc_info=True)
+            logger.error(f"Failed to get costs for {cloud_account.id}: {type(e).__name__}: {e}", exc_info=True)
 
     except Exception as e:
-        logger.error(f"[DEBUG] Failed to get summary for cloud account {cloud_account.id}: {type(e).__name__}: {e}", exc_info=True)
+        logger.error(f"Failed to get summary for cloud account {cloud_account.id}: {type(e).__name__}: {e}", exc_info=True)
 
-    logger.info(f"[DEBUG] get_cloud_account_summary result for {cloud_account.id}: {result}")
+    logger.debug(f"get_cloud_account_summary result for {cloud_account.id}: {result}")
     return result
 
 
@@ -312,22 +337,12 @@ async def validate_cloud_account_credentials(cloud_account: CloudAccount) -> lis
     Returns:
         List of permission warnings (empty if credentials have all required permissions)
     """
-    from app.cloud_accounts.adapters.aws import AWSAdapter
-    from app.cloud_accounts.adapters.azure import AzureAdapter
-    from app.shared.crypto import decrypt
-    from app.shared.enums import CloudType
-
-    if cloud_account.type not in (CloudType.AWS, CloudType.AZURE, CloudType.GCP):
+    if cloud_account.type not in CSP_TYPES and cloud_account.type not in ANALYTICS_TYPES:
         return ["Unsupported cloud provider"]
 
-    config = json.loads(decrypt(cloud_account.config))
-
-    if cloud_account.type == CloudType.AWS:
-        adapter = AWSAdapter(config)
-    elif cloud_account.type == CloudType.AZURE:
-        adapter = AzureAdapter(config)
-    else:  # GCP
-        adapter = GCPAdapter(config)
+    adapter = await _get_adapter(cloud_account)
+    if adapter is None:
+        return ["Unsupported cloud provider"]
 
     result = await adapter.validate_credentials()
     return result.get("permission_warnings", [])

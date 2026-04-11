@@ -42,6 +42,22 @@ class SecureCredentialCache:
         """Generate secure cache key from account ID."""
         return hashlib.sha256(f"cred:{account_id}".encode()).hexdigest()
 
+    def _cleanup_expired(self) -> int:
+        """Remove expired entries from the in-memory cache.
+
+        Returns the number of entries removed. Should be called
+        periodically (e.g. on every get_credentials call) to
+        prevent unbounded growth from stale entries.
+        """
+        now = utc_now()
+        expired_keys = [
+            k for k, v in self._memory_cache.items()
+            if v["expires_at"] <= now
+        ]
+        for k in expired_keys:
+            del self._memory_cache[k]
+        return len(expired_keys)
+
     async def get_credentials(
         self,
         account_id: str,
@@ -57,6 +73,9 @@ class SecureCredentialCache:
             Decrypted credentials dictionary
         """
         cache_key = self._get_cache_key(account_id)
+
+        # Proactively clean up expired entries to prevent unbounded growth
+        self._cleanup_expired()
 
         async with self._lock:
             # Check memory cache first

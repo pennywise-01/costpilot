@@ -3,6 +3,7 @@ import logging
 from datetime import timedelta
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from cachetools import TTLCache
 
 from app.config import settings
 from app.database import get_db, get_mongo
@@ -38,14 +39,9 @@ from app.shared.pagination import PaginatedResponse
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# In-memory cache for live cloud account data
-# Key: account_id, Value: (data, timestamp)
-_live_data_cache: dict[str, tuple[dict, float]] = {}
-CACHE_TTL_SECONDS = 300  # 5 minutes
-
-# Cache for permission warnings
-_permission_cache: dict[str, tuple[list[str], float]] = {}
-PERMISSION_CACHE_TTL_SECONDS = 3600  # 1 hour
+# Bounded TTL caches for live cloud account data and permission warnings
+_live_data_cache: TTLCache = TTLCache(maxsize=500, ttl=300)  # 5 minutes
+_permission_cache: TTLCache = TTLCache(maxsize=500, ttl=3600)  # 1 hour
 
 
 async def _build_response_with_permissions(cloud_account: CloudAccount) -> dict:
@@ -57,16 +53,15 @@ async def _build_response_with_permissions(cloud_account: CloudAccount) -> dict:
 
     # Check permission cache
     if account_id in _permission_cache:
-        warnings, timestamp = _permission_cache[account_id]
-        if utc_now().timestamp() - timestamp < PERMISSION_CACHE_TTL_SECONDS:
-            base = CloudAccountResponse.model_validate(cloud_account).model_dump()
-            base["permission_warnings"] = warnings
-            return base
+        warnings = _permission_cache[account_id]
+        base = CloudAccountResponse.model_validate(cloud_account).model_dump()
+        base["permission_warnings"] = warnings
+        return base
 
     # Fetch fresh permission warnings
     try:
         warnings = await validate_cloud_account_credentials(cloud_account)
-        _permission_cache[account_id] = (warnings, utc_now().timestamp())
+        _permission_cache[account_id] = warnings
     except Exception as e:
         logger.debug(f"Failed to validate credentials for account {account_id}: {e}")
         warnings = []
@@ -79,11 +74,8 @@ async def _build_response_with_permissions(cloud_account: CloudAccount) -> dict:
 def _get_cached_live_data(account_id: str) -> dict | None:
     """Get cached live data if not expired."""
     if account_id in _live_data_cache:
-        data, timestamp = _live_data_cache[account_id]
-        if utc_now().timestamp() - timestamp < CACHE_TTL_SECONDS:
-            logger.debug(f"Live data cache hit for account {account_id}")
-            return data
-        del _live_data_cache[account_id]
+        logger.debug(f"Live data cache hit for account {account_id}")
+        return _live_data_cache[account_id]
     return None
 
 
@@ -92,16 +84,15 @@ def _get_stale_cached_live_data(account_id: str) -> dict | None:
 
     Used as a fallback when a forced refresh fails due provider/API issues.
     """
-    entry = _live_data_cache.get(account_id)
-    if not entry:
+    data = _live_data_cache.get(account_id)
+    if not data:
         return None
-    data, _ = entry
     return data
 
 
 def _set_cached_live_data(account_id: str, data: dict) -> None:
     """Cache live data for an account."""
-    _live_data_cache[account_id] = (data, utc_now().timestamp())
+    _live_data_cache[account_id] = data
     logger.debug(f"Cached live data for account {account_id}")
 
 
@@ -163,11 +154,11 @@ async def list_all(
     Returns only database data without making live cloud API calls.
     Use GET /cloud-accounts/{id}/live-data for live data.
     """
-    logger.info(f"[DEBUG] list_all called - org_id={org_id}, member_id={member.id}")
+    logger.debug(f"list_all called - org_id={org_id}, member_id={member.id}")
 
     offset = (page - 1) * page_size
     accounts, total = await list_cloud_accounts(db, org_id, offset=offset, limit=page_size)
-    logger.info(f"[DEBUG] Found {len(accounts)} cloud accounts for org_id={org_id} (total: {total})")
+    logger.debug(f"Found {len(accounts)} cloud accounts for org_id={org_id} (total: {total})")
 
     # Return only DB data - no live cloud API calls
     results = [
@@ -175,7 +166,7 @@ async def list_all(
         for account in accounts
     ]
 
-    logger.info(f"[DEBUG] Returning {len(results)} accounts (DB data only)")
+    logger.debug(f"Returning {len(results)} accounts (DB data only)")
     return PaginatedResponse.create(
         items=results,
         total=total,
@@ -223,7 +214,17 @@ async def get_live_data(
     for 5 minutes to prevent rate limiting.
     
     Use force_refresh=true to bypass cache and fetch fresh data.
+    Rate-limited to 10 requests/minute when force_refresh is true.
     """
+    # Rate-limit forced refreshes to prevent cloud API abuse
+    if force_refresh and settings.RATE_LIMITING_ENABLED:
+        from app.shared.rate_limit import check_rate_limit
+        await check_rate_limit(
+            f"cloud_force_refresh:{current_user.id}",
+            max_requests=settings.RATE_LIMIT_EXPENSIVE_REQUESTS,
+            window_seconds=60,
+        )
+
     cloud_account = await get_cloud_account(db, id)
     await verify_org_membership(db, current_user.id, cloud_account.organization_id)
     await ensure_org_permission(
@@ -382,10 +383,8 @@ async def update(
     cloud_account = await update_cloud_account(db, id, data)
 
     # Invalidate cache when account is updated
-    if id in _live_data_cache:
-        del _live_data_cache[id]
-    if id in _permission_cache:
-        del _permission_cache[id]
+    _live_data_cache.pop(id, None)
+    _permission_cache.pop(id, None)
 
     return await _build_response_with_permissions(cloud_account)
 
@@ -408,10 +407,8 @@ async def delete(
     await delete_cloud_account(db, id)
 
     # Invalidate cache when account is deleted
-    if id in _live_data_cache:
-        del _live_data_cache[id]
-    if id in _permission_cache:
-        del _permission_cache[id]
+    _live_data_cache.pop(id, None)
+    _permission_cache.pop(id, None)
 
 
 @router.get("/cloud-accounts/{id}/resources")

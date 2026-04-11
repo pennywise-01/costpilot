@@ -315,7 +315,7 @@ async def download_export(
         from app.shared.exceptions import BadRequestError
         raise BadRequestError("Export is not ready for download")
 
-    if job.expires_at and job.expires_at < utc_now():
+    if job.expires_at and job.expires_at.replace(tzinfo=None) < utc_now().replace(tzinfo=None):
         from app.shared.exceptions import BadRequestError
         raise BadRequestError("Export has expired")
     

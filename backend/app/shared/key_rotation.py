@@ -19,8 +19,8 @@ class KeyRotator:
     
     def encrypt(self, data: bytes | str) -> str:
         """Encrypt with the primary key."""
-        import base64
-        encrypted = encrypt(data if isinstance(data, bytes) else data.decode() if isinstance(data, bytes) else data)
+        plaintext = data.decode() if isinstance(data, bytes) else data
+        encrypted = encrypt(plaintext)
         # Prepend key index for identification
         return f"v{self._key_index}:{encrypted}"
     

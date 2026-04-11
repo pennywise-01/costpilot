@@ -19,7 +19,10 @@ from azure.core.exceptions import (
     HttpResponseError
 )
 
-from app.cloud_accounts.adapters.analytics_base import AnalyticsAdapterBase, AnalyticsConfig
+from app.cloud_accounts.adapters.analytics_base import (
+    AnalyticsAdapterBase, AnalyticsConfig,
+    validate_sql_identifier, validate_query_params,
+)
 from app.shared.enums import CloudType
 from app.shared.retry import with_retry, SYNAPSE_RETRY_CONFIG
 from app.shared.circuit_breaker import synapse_circuit_breaker
@@ -64,8 +67,12 @@ class SynapseConfig(AnalyticsConfig):
             f"Connection Timeout=30;"
         )
     
-    async def get_access_token(self) -> str:
-        """Get Azure AD access token for Synapse."""
+    async def get_access_token(self) -> tuple[str, float]:
+        """Get Azure AD access token for Synapse.
+        
+        Returns:
+            Tuple of (token_string, expires_on_timestamp)
+        """
         credential = ClientSecretCredential(
             tenant_id=self.tenant_id,
             client_id=self.client_id,
@@ -73,8 +80,10 @@ class SynapseConfig(AnalyticsConfig):
         )
         
         # Synapse/SQL DB scope
-        token = credential.get_token("https://database.windows.net/.default")
-        return token.token
+        token = await asyncio.to_thread(
+            credential.get_token, "https://database.windows.net/.default"
+        )
+        return token.token, token.expires_on
 
 
 class SynapseAdapter(AnalyticsAdapterBase):
@@ -100,19 +109,25 @@ class SynapseAdapter(AnalyticsAdapterBase):
     
     platform_type = CloudType.SYNAPSE
     
+    # Token refresh buffer — refresh 5 minutes before expiry
+    TOKEN_REFRESH_BUFFER = 300
+    
     def __init__(self, config: dict[str, Any]):
         super().__init__(config)
         self._config = SynapseConfig(config)
         self._connection = None
-        self._access_token = None
+        self._access_token: str | None = None
+        self._token_expiry: float = 0.0
         self._token_lock = asyncio.Lock()
         self._conn_lock = asyncio.Lock()
     
     async def _get_access_token(self) -> str:
         """Get or refresh Azure AD access token."""
+        import time as _time
         async with self._token_lock:
-            if self._access_token is None:
-                self._access_token = await self._config.get_access_token()
+            now = _time.time()
+            if self._access_token is None or now >= (self._token_expiry - self.TOKEN_REFRESH_BUFFER):
+                self._access_token, self._token_expiry = await self._config.get_access_token()
             return self._access_token
     
     async def _get_connection(self) -> aioodbc.Connection:
@@ -129,37 +144,53 @@ class SynapseAdapter(AnalyticsAdapterBase):
     
     async def _execute_query(self, sql: str, timeout: int = 120) -> list[dict]:
         """Execute SQL query and return results as list of dicts."""
-        conn = await self._get_connection()
-        async with conn.cursor() as cursor:
-            cursor.set_query_timeout(timeout * 1000)  # Convert to milliseconds
-            await cursor.execute(sql)
-            
-            # Get column names
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
-            
-            # Fetch all rows
-            rows = await cursor.fetchall()
-            
-            # Convert to list of dicts
-            result = []
-            for row in rows:
-                row_dict = {}
-                for i, value in enumerate(row):
-                    if i < len(columns):
-                        # Convert datetime to string for JSON serialization
-                        if isinstance(value, datetime):
-                            value = value.isoformat()
-                        row_dict[columns[i]] = value
-                result.append(row_dict)
-            
-            return result
+        try:
+            conn = await self._get_connection()
+        except ClientAuthenticationError:
+            # Force token refresh on auth failure
+            async with self._token_lock:
+                self._access_token = None
+                self._token_expiry = 0.0
+            conn = await self._get_connection()
+        
+        try:
+            async with conn.cursor() as cursor:
+                cursor.set_query_timeout(timeout * 1000)  # Convert to milliseconds
+                await cursor.execute(sql)
+                
+                # Get column names
+                columns = [desc[0] for desc in cursor.description] if cursor.description else []
+                
+                # Fetch all rows
+                rows = await cursor.fetchall()
+                
+                # Convert to list of dicts
+                result = []
+                for row in rows:
+                    row_dict = {}
+                    for i, value in enumerate(row):
+                        if i < len(columns):
+                            # Convert datetime to string for JSON serialization
+                            if isinstance(value, datetime):
+                                value = value.isoformat()
+                            row_dict[columns[i]] = value
+                    result.append(row_dict)
+                
+                return result
+        except Exception as e:
+            # Sanitize errors that might contain connection strings with access tokens
+            sanitized = self.sanitize_connection_error(e, self.config)
+            if sanitized != str(e):
+                logger.warning(f"Sanitized Synapse query error (original contained sensitive data)")
+            raise
     
-    @synapse_circuit_breaker.call
     async def validate_credentials(self) -> dict[str, Any]:
         """Validate Synapse connection and table access."""
         try:
             # Test with simple query
-            table_ref = self._config.get_fully_qualified_table()
+            table_ref = validate_sql_identifier(
+                self._config.get_fully_qualified_table(), "table reference"
+            )
             sql = f"SELECT COUNT(*) as row_count FROM {table_ref}"
             
             rows = await self._execute_query(sql, timeout=30)
@@ -193,11 +224,15 @@ class SynapseAdapter(AnalyticsAdapterBase):
     async def _check_table_schema(self) -> bool:
         """Validate table has required columns."""
         try:
+            schema_id = validate_sql_identifier(
+                self._config.schema_name or "dbo", "schema name"
+            )
+            table_id = validate_sql_identifier(self._config.table_name, "table name")
             sql = f"""
                 SELECT COLUMN_NAME 
                 FROM INFORMATION_SCHEMA.COLUMNS 
-                WHERE TABLE_SCHEMA = '{self._config.schema_name or 'dbo'}' 
-                  AND TABLE_NAME = '{self._config.table_name}'
+                WHERE TABLE_SCHEMA = '{schema_id}' 
+                  AND TABLE_NAME = '{table_id}'
             """
             
             rows = await self._execute_query(sql, timeout=30)
@@ -208,8 +243,6 @@ class SynapseAdapter(AnalyticsAdapterBase):
         except Exception:
             return False
     
-    @synapse_circuit_breaker.call
-    @with_retry(SYNAPSE_RETRY_CONFIG)
     async def get_cost_and_usage(
         self,
         start_date: str,
@@ -218,8 +251,10 @@ class SynapseAdapter(AnalyticsAdapterBase):
         group_by: list[str] | None = None
     ) -> dict[str, Any]:
         """Query Synapse for cost and usage data."""
-        
-        table_ref = self._config.get_fully_qualified_table()
+        validate_query_params(start_date, end_date, group_by)
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         if group_by:
             group_fields = ", ".join(group_by)
@@ -229,8 +264,8 @@ class SynapseAdapter(AnalyticsAdapterBase):
                     SUM(cost) as total_cost,
                     COUNT(DISTINCT resource_id) as resource_count
                 FROM {table_ref}
-                WHERE usage_start_date >= '{start_date}' 
-                  AND usage_start_date <= '{end_date}'
+                WHERE usage_start_date >= CONVERT(DATE, '{start_date}')
+                  AND usage_start_date <= CONVERT(DATE, '{end_date}')
                 GROUP BY {group_fields}
                 ORDER BY total_cost DESC
             """
@@ -244,8 +279,8 @@ class SynapseAdapter(AnalyticsAdapterBase):
                     SUM(cost) as total_cost,
                     COUNT(DISTINCT resource_id) as resource_count
                 FROM {table_ref}
-                WHERE usage_start_date >= '{start_date}' 
-                  AND usage_start_date <= '{end_date}'
+                WHERE usage_start_date >= CONVERT(DATE, '{start_date}')
+                  AND usage_start_date <= CONVERT(DATE, '{end_date}')
                 GROUP BY 1, 2, 3, 4
                 ORDER BY total_cost DESC
             """
@@ -258,11 +293,11 @@ class SynapseAdapter(AnalyticsAdapterBase):
             "total_rows": len(rows)
         }
     
-    @synapse_circuit_breaker.call
-    @with_retry(SYNAPSE_RETRY_CONFIG)
     async def get_monthly_cost_summary(self) -> dict[str, float]:
         """Get aggregated monthly cost summary from Synapse."""
-        table_ref = self._config.get_fully_qualified_table()
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         now = datetime.now(timezone.utc)
         this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -313,8 +348,6 @@ class SynapseAdapter(AnalyticsAdapterBase):
             logger.warning(f"Synapse monthly cost summary failed: {e}")
             return {"this_month": 0.0, "last_month": 0.0, "forecast": 0.0}
     
-    @synapse_circuit_breaker.call
-    @with_retry(SYNAPSE_RETRY_CONFIG)
     async def get_daily_costs(
         self,
         start_date: str,
@@ -322,7 +355,10 @@ class SynapseAdapter(AnalyticsAdapterBase):
         group_by: list[str] | None = None
     ) -> list[dict[str, Any]]:
         """Get daily cost breakdown from Synapse."""
-        table_ref = self._config.get_fully_qualified_table()
+        validate_query_params(start_date, end_date, group_by)
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         if group_by and "service_name" in group_by:
             sql = f"""
@@ -331,8 +367,8 @@ class SynapseAdapter(AnalyticsAdapterBase):
                     service_name as group_key,
                     SUM(cost) as cost
                 FROM {table_ref}
-                WHERE usage_start_date >= '{start_date}' 
-                  AND usage_start_date <= '{end_date}'
+                WHERE usage_start_date >= CONVERT(DATE, '{start_date}')
+                  AND usage_start_date <= CONVERT(DATE, '{end_date}')
                 GROUP BY 1, 2
                 ORDER BY date, cost DESC
             """
@@ -342,19 +378,19 @@ class SynapseAdapter(AnalyticsAdapterBase):
                     CAST(usage_start_date AS VARCHAR) as date,
                     SUM(cost) as cost
                 FROM {table_ref}
-                WHERE usage_start_date >= '{start_date}' 
-                  AND usage_start_date <= '{end_date}'
+                WHERE usage_start_date >= CONVERT(DATE, '{start_date}')
+                  AND usage_start_date <= CONVERT(DATE, '{end_date}')
                 GROUP BY 1
                 ORDER BY date
             """
         
         return await self._execute_query(sql, timeout=self._config.query_timeout)
     
-    @synapse_circuit_breaker.call
-    @with_retry(SYNAPSE_RETRY_CONFIG)
     async def discover_resources(self) -> list[dict[str, Any]]:
         """Discover resources from Synapse billing table."""
-        table_ref = self._config.get_fully_qualified_table()
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         sql = f"""
             SELECT 
@@ -389,11 +425,15 @@ class SynapseAdapter(AnalyticsAdapterBase):
     async def validate_table_schema(self) -> dict[str, Any]:
         """Validate Synapse table schema."""
         try:
+            schema_id = validate_sql_identifier(
+                self._config.schema_name or "dbo", "schema name"
+            )
+            table_id = validate_sql_identifier(self._config.table_name, "table name")
             sql = f"""
                 SELECT COLUMN_NAME 
                 FROM INFORMATION_SCHEMA.COLUMNS 
-                WHERE TABLE_SCHEMA = '{self._config.schema_name or 'dbo'}' 
-                  AND TABLE_NAME = '{self._config.table_name}'
+                WHERE TABLE_SCHEMA = '{schema_id}' 
+                  AND TABLE_NAME = '{table_id}'
             """
             
             rows = await self._execute_query(sql, timeout=30)

@@ -19,7 +19,10 @@ from botocore.exceptions import (
     ParamValidationError
 )
 
-from app.cloud_accounts.adapters.analytics_base import AnalyticsAdapterBase, AnalyticsConfig
+from app.cloud_accounts.adapters.analytics_base import (
+    AnalyticsAdapterBase, AnalyticsConfig,
+    validate_sql_identifier, validate_query_params,
+)
 from app.shared.enums import CloudType
 from app.shared.retry import with_retry, REDSHIFT_RETRY_CONFIG
 from app.shared.circuit_breaker import redshift_circuit_breaker
@@ -123,7 +126,7 @@ class RedshiftAdapter(AnalyticsAdapterBase):
             else:
                 kwargs["WorkgroupName"] = self._config.config.get("workgroup_name", "")
         
-        response = client.execute_statement(**kwargs)
+        response = await asyncio.to_thread(client.execute_statement, **kwargs)
         return response["Id"]
     
     async def _get_statement_result(self, statement_id: str, timeout: int = 120) -> list[dict]:
@@ -132,9 +135,10 @@ class RedshiftAdapter(AnalyticsAdapterBase):
         
         # Wait for statement to complete
         waiter = client.get_waiter("statement_complete")
-        waiter.wait(
+        await asyncio.to_thread(
+            waiter.wait,
             Id=statement_id,
-            WaiterConfig={"Delay": 2, "MaxAttempts": timeout // 2}
+            WaiterConfig={"Delay": 2, "MaxAttempts": timeout // 2},
         )
         
         # Fetch results with pagination
@@ -146,7 +150,7 @@ class RedshiftAdapter(AnalyticsAdapterBase):
             if next_token:
                 kwargs["NextToken"] = next_token
             
-            response = client.get_statement_result(**kwargs)
+            response = await asyncio.to_thread(client.get_statement_result, **kwargs)
             
             # Convert column metadata and rows to dicts
             columns = [col["name"] for col in response["ColumnMetadata"]]
@@ -171,12 +175,13 @@ class RedshiftAdapter(AnalyticsAdapterBase):
         
         return all_rows
     
-    @redshift_circuit_breaker.call
     async def validate_credentials(self) -> dict[str, Any]:
         """Validate Redshift connection and table access."""
         try:
             # Test with simple query
-            table_ref = self._config.get_fully_qualified_table()
+            table_ref = validate_sql_identifier(
+                self._config.get_fully_qualified_table(), "table reference"
+            )
             sql = f"SELECT COUNT(*) as row_count FROM {table_ref} LIMIT 1"
             
             statement_id = await self._execute_statement(sql)
@@ -221,12 +226,18 @@ class RedshiftAdapter(AnalyticsAdapterBase):
     async def _check_table_schema(self) -> bool:
         """Validate table has required columns."""
         try:
-            table_ref = self._config.get_fully_qualified_table()
+            table_ref = validate_sql_identifier(
+                self._config.get_fully_qualified_table(), "table reference"
+            )
+            schema_id = validate_sql_identifier(
+                self._config.schema_name or "public", "schema name"
+            )
+            table_id = validate_sql_identifier(self._config.table_name, "table name")
             sql = f"""
                 SELECT column_name 
                 FROM information_schema.columns 
-                WHERE table_schema = '{self._config.schema_name or 'public'}' 
-                  AND table_name = '{self._config.table_name}'
+                WHERE table_schema = '{schema_id}' 
+                  AND table_name = '{table_id}'
             """
             
             statement_id = await self._execute_statement(sql)
@@ -239,8 +250,6 @@ class RedshiftAdapter(AnalyticsAdapterBase):
         except Exception:
             return False
     
-    @redshift_circuit_breaker.call
-    @with_retry(REDSHIFT_RETRY_CONFIG)
     async def get_cost_and_usage(
         self,
         start_date: str,
@@ -249,8 +258,10 @@ class RedshiftAdapter(AnalyticsAdapterBase):
         group_by: list[str] | None = None
     ) -> dict[str, Any]:
         """Query Redshift for cost and usage data."""
-        
-        table_ref = self._config.get_fully_qualified_table()
+        validate_query_params(start_date, end_date, group_by)
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         if group_by:
             group_fields = ", ".join(group_by)
@@ -260,8 +271,8 @@ class RedshiftAdapter(AnalyticsAdapterBase):
                     SUM(cost) as total_cost,
                     COUNT(DISTINCT resource_id) as resource_count
                 FROM {table_ref}
-                WHERE usage_start_date >= '{start_date}' 
-                  AND usage_start_date <= '{end_date}'
+                WHERE usage_start_date >= DATE('{start_date}')
+                  AND usage_start_date <= DATE('{end_date}')
                 GROUP BY {group_fields}
                 ORDER BY total_cost DESC
             """
@@ -275,8 +286,8 @@ class RedshiftAdapter(AnalyticsAdapterBase):
                     SUM(cost) as total_cost,
                     COUNT(DISTINCT resource_id) as resource_count
                 FROM {table_ref}
-                WHERE usage_start_date >= '{start_date}' 
-                  AND usage_start_date <= '{end_date}'
+                WHERE usage_start_date >= DATE('{start_date}')
+                  AND usage_start_date <= DATE('{end_date}')
                 GROUP BY 1, 2, 3, 4
                 ORDER BY total_cost DESC
             """
@@ -290,11 +301,11 @@ class RedshiftAdapter(AnalyticsAdapterBase):
             "total_rows": len(rows)
         }
     
-    @redshift_circuit_breaker.call
-    @with_retry(REDSHIFT_RETRY_CONFIG)
     async def get_monthly_cost_summary(self) -> dict[str, float]:
         """Get aggregated monthly cost summary from Redshift."""
-        table_ref = self._config.get_fully_qualified_table()
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         now = datetime.now(timezone.utc)
         this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -346,8 +357,6 @@ class RedshiftAdapter(AnalyticsAdapterBase):
             logger.warning(f"Redshift monthly cost summary failed: {e}")
             return {"this_month": 0.0, "last_month": 0.0, "forecast": 0.0}
     
-    @redshift_circuit_breaker.call
-    @with_retry(REDSHIFT_RETRY_CONFIG)
     async def get_daily_costs(
         self,
         start_date: str,
@@ -355,7 +364,10 @@ class RedshiftAdapter(AnalyticsAdapterBase):
         group_by: list[str] | None = None
     ) -> list[dict[str, Any]]:
         """Get daily cost breakdown from Redshift."""
-        table_ref = self._config.get_fully_qualified_table()
+        validate_query_params(start_date, end_date, group_by)
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         if group_by and "service_name" in group_by:
             sql = f"""
@@ -364,8 +376,8 @@ class RedshiftAdapter(AnalyticsAdapterBase):
                     service_name as group_key,
                     SUM(cost) as cost
                 FROM {table_ref}
-                WHERE usage_start_date >= '{start_date}' 
-                  AND usage_start_date <= '{end_date}'
+                WHERE usage_start_date >= DATE('{start_date}')
+                  AND usage_start_date <= DATE('{end_date}')
                 GROUP BY 1, 2
                 ORDER BY date, cost DESC
             """
@@ -375,8 +387,8 @@ class RedshiftAdapter(AnalyticsAdapterBase):
                     usage_start_date as date,
                     SUM(cost) as cost
                 FROM {table_ref}
-                WHERE usage_start_date >= '{start_date}' 
-                  AND usage_start_date <= '{end_date}'
+                WHERE usage_start_date >= DATE('{start_date}')
+                  AND usage_start_date <= DATE('{end_date}')
                 GROUP BY 1
                 ORDER BY date
             """
@@ -384,11 +396,11 @@ class RedshiftAdapter(AnalyticsAdapterBase):
         statement_id = await self._execute_statement(sql)
         return await self._get_statement_result(statement_id, timeout=self._config.query_timeout)
     
-    @redshift_circuit_breaker.call
-    @with_retry(REDSHIFT_RETRY_CONFIG)
     async def discover_resources(self) -> list[dict[str, Any]]:
         """Discover resources from Redshift billing table."""
-        table_ref = self._config.get_fully_qualified_table()
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         sql = f"""
             SELECT 
@@ -425,12 +437,18 @@ class RedshiftAdapter(AnalyticsAdapterBase):
     async def validate_table_schema(self) -> dict[str, Any]:
         """Validate Redshift table schema."""
         try:
-            table_ref = self._config.get_fully_qualified_table()
+            table_ref = validate_sql_identifier(
+                self._config.get_fully_qualified_table(), "table reference"
+            )
+            schema_id = validate_sql_identifier(
+                self._config.schema_name or "public", "schema name"
+            )
+            table_id = validate_sql_identifier(self._config.table_name, "table name")
             sql = f"""
                 SELECT column_name 
                 FROM information_schema.columns 
-                WHERE table_schema = '{self._config.schema_name or 'public'}' 
-                  AND table_name = '{self._config.table_name}'
+                WHERE table_schema = '{schema_id}' 
+                  AND table_name = '{table_id}'
             """
             
             statement_id = await self._execute_statement(sql)

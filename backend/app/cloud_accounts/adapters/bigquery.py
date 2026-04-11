@@ -22,7 +22,10 @@ from google.api_core.exceptions import (
     RetryError
 )
 
-from app.cloud_accounts.adapters.analytics_base import AnalyticsAdapterBase, AnalyticsConfig
+from app.cloud_accounts.adapters.analytics_base import (
+    AnalyticsAdapterBase, AnalyticsConfig,
+    validate_sql_identifier, validate_query_params,
+)
 from app.shared.enums import CloudType
 from app.shared.retry import with_retry, BIGQUERY_RETRY_CONFIG
 from app.shared.circuit_breaker import bigquery_circuit_breaker
@@ -111,14 +114,23 @@ class BigQueryAdapter(AnalyticsAdapterBase):
             client = await self._get_client()
             
             # Test connection with simple query
+            table_ref = validate_sql_identifier(
+                self._config.get_fully_qualified_table(), "table reference"
+            )
             test_query = f"""
                 SELECT COUNT(*) as row_count
-                FROM {self._config.get_fully_qualified_table()}
+                FROM {table_ref}
                 LIMIT 1
             """
             
-            query_job = client.query(test_query)
-            result = list(query_job.result(timeout=self._config.connection_timeout))
+            query_job = await asyncio.to_thread(
+                client.query, test_query,
+                job_config=bigquery.QueryJobConfig(
+                    use_query_cache=True,
+                    allow_large_results=False,
+                ),
+            )
+            result = list(await asyncio.to_thread(query_job.result, timeout=self._config.connection_timeout))
             
             # Check table schema
             schema_valid = await self._check_table_schema(client)
@@ -160,7 +172,9 @@ class BigQueryAdapter(AnalyticsAdapterBase):
     async def _check_table_schema(self, client: bigquery.Client) -> bool:
         """Validate that the table has expected columns."""
         try:
-            table_ref = client.get_table(self._config.get_fully_qualified_table())
+            table_ref = await asyncio.to_thread(
+                client.get_table, self._config.get_fully_qualified_table()
+            )
             columns = {schema.name.lower() for schema in table_ref.schema}
             
             # Check for minimum required columns
@@ -169,7 +183,6 @@ class BigQueryAdapter(AnalyticsAdapterBase):
         except Exception:
             return False
     
-    @bigquery_circuit_breaker.call
     async def get_cost_and_usage(
         self,
         start_date: str,
@@ -178,8 +191,10 @@ class BigQueryAdapter(AnalyticsAdapterBase):
         group_by: list[str] | None = None
     ) -> dict[str, Any]:
         """Query BigQuery for cost and usage data."""
-        
-        table_ref = self._config.get_fully_qualified_table()
+        validate_query_params(start_date, end_date, group_by)
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         if group_by:
             # Custom grouping
@@ -190,8 +205,8 @@ class BigQueryAdapter(AnalyticsAdapterBase):
                     SUM(cost) as total_cost,
                     COUNT(DISTINCT resource_id) as resource_count
                 FROM {table_ref}
-                WHERE usage_start_date >= '{start_date}' 
-                  AND usage_start_date <= '{end_date}'
+                WHERE usage_start_date >= DATE('{start_date}')
+                  AND usage_start_date <= DATE('{end_date}')
                 GROUP BY {group_fields}
                 ORDER BY total_cost DESC
             """
@@ -206,18 +221,19 @@ class BigQueryAdapter(AnalyticsAdapterBase):
                     SUM(cost) as total_cost,
                     COUNT(DISTINCT resource_id) as resource_count
                 FROM {table_ref}
-                WHERE usage_start_date >= '{start_date}' 
-                  AND usage_start_date <= '{end_date}'
+                WHERE usage_start_date >= DATE('{start_date}')
+                  AND usage_start_date <= DATE('{end_date}')
                 GROUP BY 1, 2, 3, 4
                 ORDER BY total_cost DESC
             """
         
         return await self._execute_query(query)
     
-    @bigquery_circuit_breaker.call
     async def get_monthly_cost_summary(self) -> dict[str, float]:
         """Get aggregated monthly cost summary from BigQuery."""
-        table_ref = self._config.get_fully_qualified_table()
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         now = datetime.now(timezone.utc)
         this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -271,7 +287,6 @@ class BigQueryAdapter(AnalyticsAdapterBase):
             logger.warning(f"BigQuery monthly cost summary failed: {e}")
             return {"this_month": 0.0, "last_month": 0.0, "forecast": 0.0}
     
-    @bigquery_circuit_breaker.call
     async def get_daily_costs(
         self,
         start_date: str,
@@ -279,7 +294,10 @@ class BigQueryAdapter(AnalyticsAdapterBase):
         group_by: list[str] | None = None
     ) -> list[dict[str, Any]]:
         """Get daily cost breakdown from BigQuery."""
-        table_ref = self._config.get_fully_qualified_table()
+        validate_query_params(start_date, end_date, group_by)
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         if group_by and "service_name" in group_by:
             query = f"""
@@ -288,8 +306,8 @@ class BigQueryAdapter(AnalyticsAdapterBase):
                     service_name as group_key,
                     SUM(cost) as cost
                 FROM {table_ref}
-                WHERE usage_start_date >= '{start_date}' 
-                  AND usage_start_date <= '{end_date}'
+                WHERE usage_start_date >= DATE('{start_date}')
+                  AND usage_start_date <= DATE('{end_date}')
                 GROUP BY 1, 2
                 ORDER BY date, cost DESC
             """
@@ -299,8 +317,8 @@ class BigQueryAdapter(AnalyticsAdapterBase):
                     usage_start_date as date,
                     SUM(cost) as cost
                 FROM {table_ref}
-                WHERE usage_start_date >= '{start_date}' 
-                  AND usage_start_date <= '{end_date}'
+                WHERE usage_start_date >= DATE('{start_date}')
+                  AND usage_start_date <= DATE('{end_date}')
                 GROUP BY 1
                 ORDER BY date
             """
@@ -308,10 +326,11 @@ class BigQueryAdapter(AnalyticsAdapterBase):
         result = await self._execute_query(query)
         return result.get("rows", [])
     
-    @bigquery_circuit_breaker.call
     async def discover_resources(self) -> list[dict[str, Any]]:
         """Discover resources from BigQuery billing table."""
-        table_ref = self._config.get_fully_qualified_table()
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         query = f"""
             SELECT 
@@ -320,7 +339,7 @@ class BigQueryAdapter(AnalyticsAdapterBase):
                 COALESCE(resource_type, 'Unknown') as resource_type,
                 COALESCE(region, 'unknown') as region,
                 'active' as state,
-                '{}' as tags,
+                '{{}}' as tags,
                 project_name
             FROM {table_ref}
             WHERE resource_id IS NOT NULL
@@ -351,7 +370,9 @@ class BigQueryAdapter(AnalyticsAdapterBase):
         """Validate BigQuery table schema."""
         try:
             client = await self._get_client()
-            table_ref = client.get_table(self._config.get_fully_qualified_table())
+            table_ref = await asyncio.to_thread(
+                client.get_table, self._config.get_fully_qualified_table()
+            )
             
             actual_columns = {schema.name.lower() for schema in table_ref.schema}
             
@@ -386,16 +407,16 @@ class BigQueryAdapter(AnalyticsAdapterBase):
         client = await self._get_client()
         
         try:
-            query_job = client.query(
-                query,
+            query_job = await asyncio.to_thread(
+                client.query, query,
                 job_config=bigquery.QueryJobConfig(
                     use_query_cache=True,
-                    allow_large_results=False
-                )
+                    allow_large_results=False,
+                ),
             )
             
             # Wait for query to complete with timeout
-            rows = query_job.result(timeout=self._config.query_timeout)
+            rows = await asyncio.to_thread(query_job.result, timeout=self._config.query_timeout)
             
             # Convert to list of dicts
             result_rows = []
@@ -414,7 +435,7 @@ class BigQueryAdapter(AnalyticsAdapterBase):
             }
             
         except asyncio.TimeoutError:
-            query_job.cancel()
+            await asyncio.to_thread(query_job.cancel)
             raise TimeoutError(f"BigQuery query exceeded {self._config.query_timeout}s timeout")
         except Exception as e:
             sanitized_msg = self.sanitize_connection_error(e, self.config)

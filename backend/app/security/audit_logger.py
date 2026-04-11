@@ -338,3 +338,50 @@ def get_audit_logger() -> AuditLogger:
     if _audit_logger is None:
         _audit_logger = AuditLogger()
     return _audit_logger
+
+
+async def audit_log(
+    event_type: str,
+    user_id: Optional[str] = None,
+    organization_id: Optional[str] = None,
+    resource_type: Optional[str] = None,
+    resource_id: Optional[str] = None,
+    details: Optional[dict[str, Any]] = None,
+    severity: str = "info",
+    ip_address: Optional[str] = None,
+    success: bool = True,
+) -> dict[str, Any]:
+    """Convenience function to log an audit event without an explicit db session.
+
+    Maps a string event_type/severity to the enum-based AuditLogger.log().
+    """
+    _logger = get_audit_logger()
+
+    # Map string event_type to AuditEventType enum
+    try:
+        evt = AuditEventType[event_type]
+    except KeyError:
+        evt = AuditEventType.SUSPICIOUS_ACTIVITY
+
+    # Map string severity to AuditSeverity enum
+    severity_map = {
+        "debug": AuditSeverity.DEBUG,
+        "info": AuditSeverity.INFO,
+        "warning": AuditSeverity.WARNING,
+        "high": AuditSeverity.HIGH,
+        "critical": AuditSeverity.CRITICAL,
+    }
+    sev = severity_map.get(severity.lower(), AuditSeverity.INFO)
+
+    return await _logger.log(
+        db=None,
+        event_type=evt,
+        severity=sev,
+        user_id=user_id,
+        org_id=organization_id,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        action_details=details,
+        ip_address=ip_address,
+        success=success,
+    )

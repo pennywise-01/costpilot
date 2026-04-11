@@ -8,7 +8,7 @@ from typing import Any
 
 from app.cloud_accounts.adapters.base import CloudAdapter
 from app.shared.circuit_breaker import azure_circuit_breaker
-from app.shared.exceptions import BadRequestError
+from app.shared.exceptions import BadRequestError, RateLimitException
 from app.shared.retry import AZURE_RETRY_CONFIG, with_retry
 from app.shared.utils.time import utc_now
 
@@ -222,7 +222,7 @@ class AzureAdapter(CloudAdapter):
             )
         except asyncio.TimeoutError:
             logger.warning(
-                f"[DEBUG] Azure Cost Management API call timed out after 25s for subscription {self.subscription_id}"
+                f"Azure Cost Management API call timed out after 25s for subscription {self.subscription_id}"
             )
             raise BadRequestError(
                 "Azure Cost Management API call timed out. The Azure API may be experiencing delays."
@@ -298,14 +298,13 @@ class AzureAdapter(CloudAdapter):
                     retry_after = int(e.response.headers.get('Retry-After', 10))
                 
                 logger.warning(
-                    f"[DEBUG] Azure rate limited (429). Retry-After: {retry_after}s"
+                    f"Azure rate limited (429). Retry-After: {retry_after}s"
                 )
-                # Sleep to respect rate limit
-                import time
-                time.sleep(retry_after)
-                # Retry once
-                result = client.query.usage(scope=scope, parameters=query)
-                return self._parse_cost_result(result)
+                # Raise RateLimitException so the async retry logic handles backoff
+                raise RateLimitException(
+                    f"Azure Cost Management API rate limited. Retry after {retry_after}s",
+                    retry_after=retry_after,
+                )
             
             if e.status_code == 401 or e.status_code == 403:
                 raise BadRequestError(
@@ -357,27 +356,27 @@ class AzureAdapter(CloudAdapter):
         last_month_end = first_of_month - timedelta(days=1)
         last_month_start = last_month_end.replace(day=1)
         
-        logger.info(f"[DEBUG] AzureAdapter.get_monthly_cost_summary called for subscription {self.subscription_id}")
-        logger.info(f"[DEBUG] Date range: this_month={first_of_month.isoformat()} to {today.isoformat()}, last_month={last_month_start.isoformat()} to {first_of_month.isoformat()}")
+        logger.debug(f"AzureAdapter.get_monthly_cost_summary called for subscription {self.subscription_id}")
+        logger.debug(f"Date range: this_month={first_of_month.isoformat()} to {today.isoformat()}, last_month={last_month_start.isoformat()} to {first_of_month.isoformat()}")
         
         this_month_cost = 0.0
         last_month_cost = 0.0
 
         # This month should be resilient: keep trying to return this value even if other calls fail.
         try:
-            logger.info("[DEBUG] Fetching this month data from Azure Cost Management")
+            logger.debug("Fetching this month data from Azure Cost Management")
             this_month_data = await self.get_cost_and_usage(
                 start_date=first_of_month.isoformat(),
                 end_date=today.isoformat(),
                 granularity="Monthly",
             )
-            logger.info(
-                f"[DEBUG] This month data: columns={this_month_data.get('columns')}, rows_count={len(this_month_data.get('rows', []))}, cost_index={this_month_data.get('cost_index')}"
+            logger.debug(
+                f"This month data: columns={this_month_data.get('columns')}, rows_count={len(this_month_data.get('rows', []))}, cost_index={this_month_data.get('cost_index')}"
             )
             this_month_cost = self._sum_costs(this_month_data)
         except Exception as monthly_error:
             logger.warning(
-                "[DEBUG] Failed to get Azure this month monthly summary, falling back to daily costs: %s",
+                "Failed to get Azure this month monthly summary, falling back to daily costs: %s",
                 monthly_error,
             )
 
@@ -388,28 +387,28 @@ class AzureAdapter(CloudAdapter):
                     granularity="Daily",
                 )
                 this_month_cost = self._sum_costs(this_month_daily_data)
-                logger.info("[DEBUG] Azure this month daily fallback cost: %s", this_month_cost)
+                logger.debug("Azure this month daily fallback cost: %s", this_month_cost)
             except Exception as daily_fallback_error:
-                logger.error("[DEBUG] Failed to get Azure cost summary: %s", daily_fallback_error, exc_info=True)
+                logger.error("Failed to get Azure cost summary: %s", daily_fallback_error, exc_info=True)
                 raise
 
         # Last month is best-effort. Do not discard a successful this-month value if this call fails.
         try:
-            logger.info("[DEBUG] Fetching last month data from Azure Cost Management")
+            logger.debug("Fetching last month data from Azure Cost Management")
             last_month_data = await self.get_cost_and_usage(
                 start_date=last_month_start.isoformat(),
                 end_date=first_of_month.isoformat(),
                 granularity="Monthly",
             )
-            logger.info(
-                f"[DEBUG] Last month data: columns={last_month_data.get('columns')}, rows_count={len(last_month_data.get('rows', []))}, cost_index={last_month_data.get('cost_index')}"
+            logger.debug(
+                f"Last month data: columns={last_month_data.get('columns')}, rows_count={len(last_month_data.get('rows', []))}, cost_index={last_month_data.get('cost_index')}"
             )
             last_month_cost = self._sum_costs(last_month_data)
         except Exception as e:
-            logger.warning("[DEBUG] Failed to get Azure last month costs, defaulting to 0: %s", e)
+            logger.warning("Failed to get Azure last month costs, defaulting to 0: %s", e)
 
-        logger.info(
-            f"[DEBUG] Azure calculated costs: this_month_cost={this_month_cost}, last_month_cost={last_month_cost}"
+        logger.debug(
+            f"Azure calculated costs: this_month_cost={this_month_cost}, last_month_cost={last_month_cost}"
         )
 
         # Forecast: extrapolate this month
@@ -422,7 +421,7 @@ class AzureAdapter(CloudAdapter):
             "last_month": round(last_month_cost, 2),
             "forecast": round(forecast, 2),
         }
-        logger.info(f"[DEBUG] Azure returning result: {result}")
+        logger.debug(f"Azure returning result: {result}")
         return result
 
     def _sum_costs(self, data: dict) -> float:
@@ -530,7 +529,7 @@ class AzureAdapter(CloudAdapter):
             include_costs: If True, fetch and include cost data for each resource.
                           Defaults to False for faster loading.
         """
-        logger.info(f"[DEBUG] Azure discover_resources starting for subscription {self.subscription_id}")
+        logger.debug(f"Azure discover_resources starting for subscription {self.subscription_id}")
         try:
             async def _api_call():
                 return await asyncio.to_thread(self._discover_resources_sync)
@@ -539,7 +538,7 @@ class AzureAdapter(CloudAdapter):
                 lambda: azure_circuit_breaker.call(_api_call),
                 config=AZURE_RETRY_CONFIG,
             )
-            logger.info(f"[DEBUG] Azure discovered {len(resources)} resources for subscription {self.subscription_id}")
+            logger.debug(f"Azure discovered {len(resources)} resources for subscription {self.subscription_id}")
 
             # Only fetch costs if explicitly requested (e.g., for cloud account details page)
             if include_costs:

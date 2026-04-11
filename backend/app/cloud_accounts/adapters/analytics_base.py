@@ -13,8 +13,87 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.shared.enums import CloudType
+from app.shared.exceptions import BadRequestError
 
 logger = logging.getLogger(__name__)
+
+
+# --- SQL Injection Prevention ---
+
+_ALLOWED_GROUP_BY_FIELDS: frozenset[str] = frozenset({
+    "invoice_month", "service_name", "resource_type", "region",
+    "resource_id", "project_name", "usage_start_date", "usage_end_date",
+    "currency", "usage_unit",
+})
+
+_SQL_IDENTIFIER_RE = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_.]*$')
+_DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+
+
+def validate_sql_identifier(identifier: str, field_name: str = "identifier") -> str:
+    """Validate a SQL identifier (table name, schema name, column name).
+
+    Only allows alphanumeric characters, underscores, and dots.
+    Prevents SQL injection through identifiers which cannot be parameterized.
+
+    Raises:
+        BadRequestError: If the identifier contains disallowed characters.
+    """
+    if not identifier or not _SQL_IDENTIFIER_RE.match(identifier):
+        raise BadRequestError(f"Invalid {field_name}: '{identifier}' contains disallowed characters")
+    return identifier
+
+
+def validate_group_by_fields(fields: list[str]) -> list[str]:
+    """Validate group_by fields against an allowlist.
+
+    Only pre-approved column names are allowed to prevent SQL injection
+    through column names which cannot be parameterized in GROUP BY clauses.
+
+    Raises:
+        BadRequestError: If any field is not in the allowlist.
+    """
+    invalid = [f for f in fields if f not in _ALLOWED_GROUP_BY_FIELDS]
+    if invalid:
+        raise BadRequestError(
+            f"Invalid group_by fields: {invalid}. "
+            f"Allowed fields: {sorted(_ALLOWED_GROUP_BY_FIELDS)}"
+        )
+    return fields
+
+
+def validate_query_params(
+    start_date: str,
+    end_date: str,
+    group_by: list[str] | None = None,
+    max_days: int = 365,
+) -> None:
+    """Validate query parameters for analytics queries.
+
+    Ensures date format, range, and group_by fields are valid.
+
+    Raises:
+        BadRequestError: If any parameter is invalid.
+    """
+    if not _DATE_RE.match(start_date):
+        raise BadRequestError(f"Invalid start_date format: '{start_date}'. Expected YYYY-MM-DD")
+    if not _DATE_RE.match(end_date):
+        raise BadRequestError(f"Invalid end_date format: '{end_date}'. Expected YYYY-MM-DD")
+
+    try:
+        sd = datetime.strptime(start_date, "%Y-%m-%d").date()
+        ed = datetime.strptime(end_date, "%Y-%m-%d").date()
+    except ValueError as e:
+        raise BadRequestError(f"Invalid date value: {e}")
+
+    if sd > ed:
+        raise BadRequestError(f"start_date ({start_date}) must be <= end_date ({end_date})")
+
+    if (ed - sd).days > max_days:
+        raise BadRequestError(f"Date range exceeds maximum of {max_days} days")
+
+    if group_by:
+        validate_group_by_fields(group_by)
 
 
 class AnalyticsConfig:
@@ -228,6 +307,9 @@ class AnalyticsAdapterBase:
         # Azure client secrets
         msg = re.sub(r'client_secret["\s]*[:=]\s*["\']?[\w\-/+=.]+', 'client_secret: [REDACTED]', msg, flags=re.IGNORECASE)
         
+        # Access tokens (e.g. Synapse ODBC connection strings)
+        msg = re.sub(r'ACCESSTOKEN=[^;\s]+', 'ACCESSTOKEN=[REDACTED]', msg, flags=re.IGNORECASE)
+        
         # Generic password/secret patterns
         msg = re.sub(r'(?:password|secret|token)["\s]*[:=]\s*["\']?[\w\-/+=.]{8,}', '[REDACTED]', msg, flags=re.IGNORECASE)
         
@@ -247,17 +329,20 @@ class AnalyticsAdapterBase:
         """Build standard SQL query for normalized billing table.
         
         Args:
-            table_ref: Fully qualified table reference
-            start_date: Start date (YYYY-MM-DD)
-            end_date: End date (YYYY-MM-DD)
-            group_by: Fields to group by
+            table_ref: Fully qualified table reference (validated)
+            start_date: Start date (YYYY-MM-DD, validated)
+            end_date: End date (YYYY-MM-DD, validated)
+            group_by: Fields to group by (validated against allowlist)
             custom_sql: Custom SQL template (overrides standard query)
         
         Returns:
             SQL query string with parameterized dates
         """
+        validate_query_params(start_date, end_date, group_by)
+        validate_sql_identifier(table_ref, "table reference")
+        
         if custom_sql:
-            # Replace date placeholders in custom SQL
+            # Replace date placeholders in custom SQL — dates are validated above
             return custom_sql.replace('@start_date', start_date).replace('@end_date', end_date)
         
         if group_by:
@@ -268,8 +353,8 @@ class AnalyticsAdapterBase:
                     SUM(cost) as total_cost,
                     COUNT(DISTINCT resource_id) as resource_count
                 FROM {table_ref}
-                WHERE usage_start_date >= '{start_date}' 
-                  AND usage_start_date <= '{end_date}'
+                WHERE usage_start_date >= DATE('{start_date}')
+                  AND usage_start_date <= DATE('{end_date}')
                 GROUP BY {group_fields}
                 ORDER BY total_cost DESC
             """
@@ -283,8 +368,8 @@ class AnalyticsAdapterBase:
                 SUM(cost) as total_cost,
                 COUNT(DISTINCT resource_id) as resource_count
             FROM {table_ref}
-            WHERE usage_start_date >= '{start_date}' 
-              AND usage_start_date <= '{end_date}'
+            WHERE usage_start_date >= DATE('{start_date}')
+              AND usage_start_date <= DATE('{end_date}')
             GROUP BY 1, 2, 3, 4
             ORDER BY total_cost DESC
         """

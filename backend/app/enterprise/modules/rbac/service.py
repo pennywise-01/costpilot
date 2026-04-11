@@ -554,7 +554,7 @@ async def check_permission(
         if employee:
             # Allow read/manage access as fallback for existing organizations
             # without RBAC setup
-            audit_log(
+            await audit_log(
                 event_type="RBAC_LEGACY_FALLBACK_USED",
                 user_id=req.user_id,
                 organization_id=org_id,

@@ -17,6 +17,9 @@ from app.shared.retry import AWS_RETRY_CONFIG, with_retry
 from app.shared.utils.time import utc_now
 
 
+_sanitize_logger = logging.getLogger(__name__)
+
+
 def _sanitize_csp_error(error: Exception) -> str:
     """Sanitize cloud provider error messages to prevent information leakage."""
     error_str = str(error)
@@ -28,8 +31,9 @@ def _sanitize_csp_error(error: Exception) -> str:
     error_str = re.sub(r'subscription[^:]*:?[\s"]*([0-9a-fA-F-]{36})', 'subscription_id: ***REDACTED***', error_str)
     # Remove GCP project IDs/numbers
     error_str = re.sub(r'project[-_]?[nN]umbers?[/\s]+(\d{6,})', 'project_number: ***REDACTED***', error_str)
-    # Remove full error details, return generic message
-    return "Cloud provider API error. Check server logs for details."
+    # Log sanitized error for debugging, then return it
+    _sanitize_logger.warning(f"Sanitized CSP error: {error_str}")
+    return error_str
 
 
 class AWSAdapter(CloudAdapter):
@@ -58,22 +62,29 @@ class AWSAdapter(CloudAdapter):
         self.region = config.get("region", "us-east-1")
         self.account_id = config.get("account_id", "")
         self._permission_warnings: list[str] = []
+        self._session: boto3.Session | None = None
+        self._client_cache: dict[str, Any] = {}
 
         if not self.access_key_id or not self.secret_access_key:
             raise BadRequestError("AWS credentials (access_key_id and secret_access_key) are required")
 
     def _get_session(self) -> boto3.Session:
-        """Create a boto3 session with the stored credentials."""
-        return boto3.Session(
-            aws_access_key_id=self.access_key_id,
-            aws_secret_access_key=self.secret_access_key,
-            region_name=self.region,
-        )
+        """Create or return cached boto3 session with the stored credentials."""
+        if self._session is None:
+            self._session = boto3.Session(
+                aws_access_key_id=self.access_key_id,
+                aws_secret_access_key=self.secret_access_key,
+                region_name=self.region,
+            )
+        return self._session
 
     def _get_client(self, service: str, region: str | None = None):
-        """Get a boto3 client for the specified service."""
-        session = self._get_session()
-        return session.client(service, region_name=region or self.region)
+        """Get a cached boto3 client for the specified service and region."""
+        cache_key = f"{service}:{region or self.region}"
+        if cache_key not in self._client_cache:
+            session = self._get_session()
+            self._client_cache[cache_key] = session.client(service, region_name=region or self.region)
+        return self._client_cache[cache_key]
 
     async def validate_credentials(self) -> dict[str, Any]:
         """Validate AWS credentials by calling STS GetCallerIdentity.
@@ -262,40 +273,40 @@ class AWSAdapter(CloudAdapter):
         last_month_end = first_of_month - timedelta(days=1)
         last_month_start = last_month_end.replace(day=1)
         
-        logger.info(f"[DEBUG] AWSAdapter.get_monthly_cost_summary called for account {self.account_id or 'unknown'}")
-        logger.info(f"[DEBUG] Date range: this_month={first_of_month.isoformat()} to {(today + timedelta(days=1)).isoformat()}, last_month={last_month_start.isoformat()} to {first_of_month.isoformat()}")
+        logger.debug(f"AWSAdapter.get_monthly_cost_summary called for account {self.account_id or 'unknown'}")
+        logger.debug(f"Date range: this_month={first_of_month.isoformat()} to {(today + timedelta(days=1)).isoformat()}, last_month={last_month_start.isoformat()} to {first_of_month.isoformat()}")
         
         # This month (up to today)
-        logger.info("[DEBUG] Fetching this month data from AWS Cost Explorer")
+        logger.debug("Fetching this month data from AWS Cost Explorer")
         this_month_data = await self.get_cost_and_usage(
             start_date=first_of_month.isoformat(),
             end_date=(today + timedelta(days=1)).isoformat(),
             granularity="MONTHLY",
         )
-        logger.info(f"[DEBUG] This month raw data: ResultsByTime count={len(this_month_data.get('ResultsByTime', []))}")
+        logger.debug(f"This month raw data: ResultsByTime count={len(this_month_data.get('ResultsByTime', []))}")
         
         # Last month
-        logger.info("[DEBUG] Fetching last month data from AWS Cost Explorer")
+        logger.debug("Fetching last month data from AWS Cost Explorer")
         last_month_data = await self.get_cost_and_usage(
             start_date=last_month_start.isoformat(),
             end_date=first_of_month.isoformat(),
             granularity="MONTHLY",
         )
-        logger.info(f"[DEBUG] Last month raw data: ResultsByTime count={len(last_month_data.get('ResultsByTime', []))}")
+        logger.debug(f"Last month raw data: ResultsByTime count={len(last_month_data.get('ResultsByTime', []))}")
         
         this_month_cost = 0.0
         for result in this_month_data.get("ResultsByTime", []):
             amount = float(result.get("Total", {}).get("UnblendedCost", {}).get("Amount", 0))
-            logger.info(f"[DEBUG] This month result: {result.get('TimePeriod')} = ${amount}")
+            logger.debug(f"This month result: {result.get('TimePeriod')} = ${amount}")
             this_month_cost += amount
         
         last_month_cost = 0.0
         for result in last_month_data.get("ResultsByTime", []):
             amount = float(result.get("Total", {}).get("UnblendedCost", {}).get("Amount", 0))
-            logger.info(f"[DEBUG] Last month result: {result.get('TimePeriod')} = ${amount}")
+            logger.debug(f"Last month result: {result.get('TimePeriod')} = ${amount}")
             last_month_cost += amount
         
-        logger.info(f"[DEBUG] AWS calculated costs: this_month_cost={this_month_cost}, last_month_cost={last_month_cost}")
+        logger.debug(f"AWS calculated costs: this_month_cost={this_month_cost}, last_month_cost={last_month_cost}")
         
         # Forecast: extrapolate this month
         days_elapsed = max((today - first_of_month).days + 1, 1)
@@ -307,7 +318,7 @@ class AWSAdapter(CloudAdapter):
             "last_month": round(last_month_cost, 2),
             "forecast": round(forecast, 2),
         }
-        logger.info(f"[DEBUG] AWS returning result: {result}")
+        logger.debug(f"AWS returning result: {result}")
         return result
 
     async def get_daily_costs(
@@ -353,10 +364,10 @@ class AWSAdapter(CloudAdapter):
         import logging
         logger = logging.getLogger(__name__)
         
-        logger.info(f"[DEBUG] AWS discover_resources starting for account {self.account_id or 'unknown'}")
+        logger.debug(f"AWS discover_resources starting for account {self.account_id or 'unknown'}")
         resources = []
         regions = await self.get_regions()
-        logger.info(f"[DEBUG] AWS will discover resources in {len(regions)} regions")
+        logger.debug(f"AWS will discover resources in {len(regions)} regions")
         
         # Use semaphore to limit concurrent region discovery
         semaphore = asyncio.Semaphore(5)
@@ -391,10 +402,10 @@ class AWSAdapter(CloudAdapter):
         
         # S3 Buckets (global service, query once)
         s3_resources = await self._discover_s3_buckets()
-        logger.info(f"[DEBUG] AWS discovered {len(s3_resources)} S3 buckets")
+        logger.debug(f"AWS discovered {len(s3_resources)} S3 buckets")
         resources.extend(s3_resources)
         
-        logger.info(f"[DEBUG] AWS discover_resources completed: total {len(resources)} resources")
+        logger.debug(f"AWS discover_resources completed: total {len(resources)} resources")
         return resources
 
     async def _discover_ec2_instances(self, region: str) -> list[dict]:

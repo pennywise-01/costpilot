@@ -7,7 +7,7 @@ from typing import Callable, Optional, Any
 from functools import wraps
 import logging
 
-from app.shared.exceptions import CircuitBreakerOpenError
+from app.shared.exceptions import CircuitBreakerOpenError, CloudProviderException, RateLimitException
 
 logger = logging.getLogger(__name__)
 
@@ -160,27 +160,32 @@ def circuit_breaker(
 class CircuitBreakerRegistry:
     """Registry of all circuit breakers for monitoring."""
 
-    _breakers: dict[str, CircuitBreaker] = {}
+    def __init__(self):
+        self._breakers: dict[str, CircuitBreaker] = {}
 
-    @classmethod
-    def register(cls, name: str, breaker: CircuitBreaker):
-        cls._breakers[name] = breaker
+    def register(self, name: str, breaker: CircuitBreaker):
+        self._breakers[name] = breaker
 
-    @classmethod
-    def get_breaker(cls, name: str) -> Optional[CircuitBreaker]:
-        return cls._breakers.get(name)
+    def get_breaker(self, name: str) -> Optional[CircuitBreaker]:
+        return self._breakers.get(name)
 
-    @classmethod
-    def get_status(cls) -> dict:
+    def get_status(self) -> dict:
         return {
             name: breaker.get_status()
-            for name, breaker in cls._breakers.items()
+            for name, breaker in self._breakers.items()
         }
 
-    @classmethod
-    def get_all_breakers(cls) -> dict[str, CircuitBreaker]:
-        return cls._breakers.copy()
+    def get_all_breakers(self) -> dict[str, CircuitBreaker]:
+        return self._breakers.copy()
 
+
+# Module-level singleton
+_circuit_registry = CircuitBreakerRegistry()
+
+
+# Transient exceptions that should trip the circuit breaker.
+# Business logic errors (BadRequestError, ValueError, etc.) should NOT trip it.
+_TRANSIENT_EXCEPTIONS = (ConnectionError, TimeoutError, CloudProviderException, RateLimitException)
 
 # Pre-configured circuit breakers for CSP adapters
 
@@ -188,21 +193,21 @@ aws_circuit_breaker = CircuitBreaker(
     name="aws-api",
     failure_threshold=5,
     recovery_timeout=60.0,
-    expected_exceptions=(Exception,)
+    expected_exceptions=_TRANSIENT_EXCEPTIONS
 )
 
 azure_circuit_breaker = CircuitBreaker(
     name="azure-api",
     failure_threshold=5,
     recovery_timeout=60.0,
-    expected_exceptions=(Exception,)
+    expected_exceptions=_TRANSIENT_EXCEPTIONS
 )
 
 gcp_circuit_breaker = CircuitBreaker(
     name="gcp-api",
     failure_threshold=5,
     recovery_timeout=60.0,
-    expected_exceptions=(Exception,)
+    expected_exceptions=_TRANSIENT_EXCEPTIONS
 )
 
 # Analytics connector circuit breakers (longer recovery for analytics platforms)
@@ -211,35 +216,35 @@ bigquery_circuit_breaker = CircuitBreaker(
     name="bigquery-api",
     failure_threshold=5,
     recovery_timeout=120.0,
-    expected_exceptions=(Exception,)
+    expected_exceptions=_TRANSIENT_EXCEPTIONS
 )
 
 redshift_circuit_breaker = CircuitBreaker(
     name="redshift-api",
     failure_threshold=5,
     recovery_timeout=120.0,
-    expected_exceptions=(Exception,)
+    expected_exceptions=_TRANSIENT_EXCEPTIONS
 )
 
 athena_circuit_breaker = CircuitBreaker(
     name="athena-api",
     failure_threshold=5,
     recovery_timeout=120.0,
-    expected_exceptions=(Exception,)
+    expected_exceptions=_TRANSIENT_EXCEPTIONS
 )
 
 synapse_circuit_breaker = CircuitBreaker(
     name="synapse-api",
     failure_threshold=5,
     recovery_timeout=120.0,
-    expected_exceptions=(Exception,)
+    expected_exceptions=_TRANSIENT_EXCEPTIONS
 )
 
 # Register circuit breakers
-CircuitBreakerRegistry.register("aws-api", aws_circuit_breaker)
-CircuitBreakerRegistry.register("azure-api", azure_circuit_breaker)
-CircuitBreakerRegistry.register("gcp-api", gcp_circuit_breaker)
-CircuitBreakerRegistry.register("bigquery-api", bigquery_circuit_breaker)
-CircuitBreakerRegistry.register("redshift-api", redshift_circuit_breaker)
-CircuitBreakerRegistry.register("athena-api", athena_circuit_breaker)
-CircuitBreakerRegistry.register("synapse-api", synapse_circuit_breaker)
+_circuit_registry.register("aws-api", aws_circuit_breaker)
+_circuit_registry.register("azure-api", azure_circuit_breaker)
+_circuit_registry.register("gcp-api", gcp_circuit_breaker)
+_circuit_registry.register("bigquery-api", bigquery_circuit_breaker)
+_circuit_registry.register("redshift-api", redshift_circuit_breaker)
+_circuit_registry.register("athena-api", athena_circuit_breaker)
+_circuit_registry.register("synapse-api", synapse_circuit_breaker)

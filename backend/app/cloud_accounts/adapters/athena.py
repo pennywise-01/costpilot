@@ -21,7 +21,10 @@ from botocore.exceptions import (
     ParamValidationError
 )
 
-from app.cloud_accounts.adapters.analytics_base import AnalyticsAdapterBase, AnalyticsConfig
+from app.cloud_accounts.adapters.analytics_base import (
+    AnalyticsAdapterBase, AnalyticsConfig,
+    validate_sql_identifier, validate_query_params,
+)
 from app.shared.enums import CloudType
 from app.shared.retry import with_retry, ATHENA_RETRY_CONFIG
 from app.shared.circuit_breaker import athena_circuit_breaker
@@ -108,7 +111,8 @@ class AthenaAdapter(AnalyticsAdapterBase):
         """Start Athena query and return QueryExecutionId."""
         client = await self._get_client()
         
-        response = client.start_query_execution(
+        response = await asyncio.to_thread(
+            client.start_query_execution,
             QueryString=sql,
             QueryExecutionContext={
                 "Database": self._config.database
@@ -116,7 +120,7 @@ class AthenaAdapter(AnalyticsAdapterBase):
             ResultConfiguration={
                 "OutputLocation": self._config.s3_output_location
             },
-            WorkGroup=self._config.workgroup
+            WorkGroup=self._config.workgroup,
         )
         
         return response["QueryExecutionId"]
@@ -135,12 +139,12 @@ class AthenaAdapter(AnalyticsAdapterBase):
             if elapsed > timeout:
                 # Cancel the query
                 try:
-                    client.stop_query_execution(QueryExecutionId=query_id)
+                    await asyncio.to_thread(client.stop_query_execution, QueryExecutionId=query_id)
                 except Exception:
                     pass
                 raise TimeoutError(f"Athena query exceeded {timeout}s timeout")
             
-            response = client.get_query_execution(QueryExecutionId=query_id)
+            response = await asyncio.to_thread(client.get_query_execution, QueryExecutionId=query_id)
             state = response["QueryExecution"]["Status"]["State"]
             
             if state == "SUCCEEDED":
@@ -165,7 +169,7 @@ class AthenaAdapter(AnalyticsAdapterBase):
             if next_token:
                 kwargs["NextToken"] = next_token
             
-            response = client.get_query_results(**kwargs)
+            response = await asyncio.to_thread(client.get_query_results, **kwargs)
             
             # First row is column headers
             if response["ResultSet"]["Rows"]:
@@ -200,12 +204,13 @@ class AthenaAdapter(AnalyticsAdapterBase):
         await self._wait_for_query(query_id, timeout=timeout)
         return await self._get_query_results(query_id)
     
-    @athena_circuit_breaker.call
     async def validate_credentials(self) -> dict[str, Any]:
         """Validate Athena connection and table access."""
         try:
             # Test with simple query
-            table_ref = self._config.get_fully_qualified_table()
+            table_ref = validate_sql_identifier(
+                self._config.get_fully_qualified_table(), "table reference"
+            )
             sql = f"SELECT COUNT(*) as row_count FROM {table_ref} LIMIT 1"
             
             rows = await self._execute_athena_query(sql, timeout=30)
@@ -228,7 +233,7 @@ class AthenaAdapter(AnalyticsAdapterBase):
                         "IAM user needs athena:StartQueryExecution",
                         "IAM user needs athena:GetQueryExecution",
                         "IAM user needs athena:GetQueryResults",
-                        f"IAM user needs s3:GetObject and s3:PutObject for {self._config.s3_output_location}"
+                        "IAM user needs s3:GetObject and s3:PutObject for the configured S3 output location"
                     ]
                 }
             
@@ -244,8 +249,6 @@ class AthenaAdapter(AnalyticsAdapterBase):
                 "permission_warnings": []
             }
     
-    @athena_circuit_breaker.call
-    @with_retry(ATHENA_RETRY_CONFIG)
     async def get_cost_and_usage(
         self,
         start_date: str,
@@ -254,8 +257,10 @@ class AthenaAdapter(AnalyticsAdapterBase):
         group_by: list[str] | None = None
     ) -> dict[str, Any]:
         """Query Athena for cost and usage data."""
-        
-        table_ref = self._config.get_fully_qualified_table()
+        validate_query_params(start_date, end_date, group_by)
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         if group_by:
             group_fields = ", ".join(group_by)
@@ -294,11 +299,11 @@ class AthenaAdapter(AnalyticsAdapterBase):
             "total_rows": len(rows)
         }
     
-    @athena_circuit_breaker.call
-    @with_retry(ATHENA_RETRY_CONFIG)
     async def get_monthly_cost_summary(self) -> dict[str, float]:
         """Get aggregated monthly cost summary from Athena."""
-        table_ref = self._config.get_fully_qualified_table()
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         now = datetime.now(timezone.utc)
         this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -349,8 +354,6 @@ class AthenaAdapter(AnalyticsAdapterBase):
             logger.warning(f"Athena monthly cost summary failed: {e}")
             return {"this_month": 0.0, "last_month": 0.0, "forecast": 0.0}
     
-    @athena_circuit_breaker.call
-    @with_retry(ATHENA_RETRY_CONFIG)
     async def get_daily_costs(
         self,
         start_date: str,
@@ -358,7 +361,10 @@ class AthenaAdapter(AnalyticsAdapterBase):
         group_by: list[str] | None = None
     ) -> list[dict[str, Any]]:
         """Get daily cost breakdown from Athena."""
-        table_ref = self._config.get_fully_qualified_table()
+        validate_query_params(start_date, end_date, group_by)
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         if group_by and "service_name" in group_by:
             sql = f"""
@@ -386,11 +392,11 @@ class AthenaAdapter(AnalyticsAdapterBase):
         
         return await self._execute_athena_query(sql, timeout=self._config.query_timeout)
     
-    @athena_circuit_breaker.call
-    @with_retry(ATHENA_RETRY_CONFIG)
     async def discover_resources(self) -> list[dict[str, Any]]:
         """Discover resources from Athena billing table."""
-        table_ref = self._config.get_fully_qualified_table()
+        table_ref = validate_sql_identifier(
+            self._config.get_fully_qualified_table(), "table reference"
+        )
         
         sql = f"""
             SELECT 
@@ -426,11 +432,13 @@ class AthenaAdapter(AnalyticsAdapterBase):
     async def validate_table_schema(self) -> dict[str, Any]:
         """Validate Athena table schema via information_schema."""
         try:
+            schema_id = validate_sql_identifier(self._config.database, "database name")
+            table_id = validate_sql_identifier(self._config.table_name, "table name")
             sql = f"""
                 SELECT column_name 
                 FROM information_schema.columns 
-                WHERE table_schema = '{self._config.database}' 
-                  AND table_name = '{self._config.table_name}'
+                WHERE table_schema = '{schema_id}' 
+                  AND table_name = '{table_id}'
             """
             
             rows = await self._execute_athena_query(sql, timeout=30)
