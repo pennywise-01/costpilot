@@ -19,3 +19,4 @@ docs/
 docs-website/
 backend/tests/
 frontend/tests/
+.vscode/
