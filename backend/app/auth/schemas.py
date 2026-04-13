@@ -36,3 +36,12 @@ class UserUpdate(BaseModel):
     display_name: str | None = Field(None, min_length=1, max_length=256)
     current_password: str | None = Field(None, min_length=1)
     password: str | None = Field(None, min_length=8, max_length=128)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=1)
+    password: str = Field(min_length=8, max_length=128)

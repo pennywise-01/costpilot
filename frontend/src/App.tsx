@@ -10,6 +10,8 @@ import AppLayout from '@/layouts/AppLayout';
 const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
 const AcceptInvitation = lazy(() => import('@/pages/AcceptInvitation'));
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const SelectOrganization = lazy(() => import('@/pages/SelectOrganization'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Expenses = lazy(() => import('@/pages/Expenses'));
@@ -73,11 +75,13 @@ const App: React.FC = () => {
         >
           <Route path={ROUTES.LOGIN} element={<Login />} />
           <Route path={ROUTES.REGISTER} element={<Register />} />
+          <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
         </Route>
 
         {/* Public routes (no auth required) */}
         <Route element={<AuthLayout />}>
           <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
         </Route>
 
         {/* Protected routes */}

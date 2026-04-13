@@ -11,7 +11,7 @@ import redis.asyncio as aioredis
 
 from app.config import settings
 from app.auth.models import User, SessionBinding, SessionRevokeReason
-from app.shared.exceptions import ConflictError, UnauthorizedError, NotFoundError
+from app.shared.exceptions import BadRequestError, ConflictError, UnauthorizedError, ForbiddenError, NotFoundError
 from app.shared.utils.time import utc_now
 
 _redis_client: aioredis.Redis | None = None
@@ -252,7 +252,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
     )
     user = result.scalar_one_or_none()
     if not user:
-        raise UnauthorizedError("Invalid email or password")
+        raise UnauthorizedError("Wrong username/password")
 
     # Check if account is locked
     if user.locked_until is not None and user.locked_until > utc_now():
@@ -261,14 +261,14 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
         raise UnauthorizedError(f"Account is locked. Try again in {minutes} minutes")
 
     if not user.is_active:
-        raise UnauthorizedError("Account is disabled")
+        raise ForbiddenError("Your account has been suspended. Please contact your admin for access.")
 
     if not verify_password(password, user.hashed_password):
         user.failed_login_attempts += 1
         if user.failed_login_attempts >= 5:
             user.locked_until = utc_now() + timedelta(minutes=15)
         await db.flush()
-        raise UnauthorizedError("Invalid email or password")
+        raise UnauthorizedError("Wrong username/password")
 
     # Successful login — reset lockout counters
     user.failed_login_attempts = 0
@@ -286,6 +286,64 @@ async def get_user_by_id(db: AsyncSession, user_id: str) -> User:
     if not user:
         raise NotFoundError("User not found")
     return user
+
+
+_PASSWORD_RESET_PREFIX = "password_reset:"
+_PASSWORD_RESET_TTL_SECONDS = 900  # 15 minutes
+
+
+async def create_password_reset_token(email: str) -> str | None:
+    """Create a password reset token stored in Redis. Returns the token or None if user not found."""
+    from app.database import async_session_factory
+
+    token = secrets.token_urlsafe(32)
+    async with async_session_factory() as db:
+        result = await db.execute(
+            select(User).where(User.email == email, User.deleted_at.is_(None))
+        )
+        user = result.scalar_one_or_none()
+        if not user:
+            return None
+
+    r = await _get_redis()
+    key = f"{_PASSWORD_RESET_PREFIX}{token}"
+    await r.setex(key, _PASSWORD_RESET_TTL_SECONDS, user.id)
+    return token
+
+
+async def verify_password_reset_token(token: str) -> str | None:
+    """Verify a password reset token. Returns user_id if valid, None otherwise."""
+    r = await _get_redis()
+    key = f"{_PASSWORD_RESET_PREFIX}{token}"
+    user_id = await r.get(key)
+    if not user_id:
+        return None
+    return user_id
+
+
+async def reset_password(token: str, new_password: str) -> User:
+    """Reset a user's password using a valid reset token. Deletes the token after use."""
+    from app.database import async_session_factory
+
+    user_id = await verify_password_reset_token(token)
+    if not user_id:
+        raise BadRequestError("Invalid or expired reset token")
+
+    r = await _get_redis()
+    await r.delete(f"{_PASSWORD_RESET_PREFIX}{token}")
+
+    async with async_session_factory() as db:
+        result = await db.execute(
+            select(User).where(User.id == user_id, User.deleted_at.is_(None))
+        )
+        user = result.scalar_one_or_none()
+        if not user:
+            raise NotFoundError("User not found")
+        user.hashed_password = hash_password(new_password)
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        await db.commit()
+        return user
 
 
 async def close_redis_client() -> None:

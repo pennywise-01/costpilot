@@ -20,6 +20,7 @@ from app.user_management.schemas import (
     ActivityLogEntry,
     ActivityLogFilter,
     ActivityLogListResponse,
+    AdminResetPasswordRequest,
     BulkInviteResponse,
     EffectivePermissionsResponse,
     InvitationAcceptRequest,
@@ -38,6 +39,7 @@ from app.user_management.schemas import (
 from app.user_management.service import (
     accept_invitation,
     activate_user,
+    admin_reset_user_password,
     bulk_create_invitations,
     create_invitation,
     get_effective_permissions,
@@ -209,6 +211,22 @@ async def activate_user_endpoint(
 ):
     """Activate/reactivate a user account."""
     return await activate_user(db, org_id, user_id, current_user.id)
+
+
+@router.post(
+    "/organizations/{org_id}/users/{user_id}/reset-password",
+    response_model=UserListItem,
+    dependencies=[Depends(require_manage_users)]
+)
+async def reset_user_password_endpoint(
+    org_id: str,
+    user_id: str,
+    data: AdminResetPasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Admin-initiated password reset for a user."""
+    return await admin_reset_user_password(db, org_id, user_id, data.new_password, current_user.id)
 
 
 @router.delete(

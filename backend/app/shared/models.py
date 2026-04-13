@@ -40,3 +40,12 @@ class BaseModel(Base, TimestampMixin, SoftDeleteMixin):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=generate_uuid
     )
+
+
+class BaseModelWithoutSoftDelete(Base, TimestampMixin):
+    """Base model without soft-delete support, for tables that don't need it."""
+    __abstract__ = True
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=generate_uuid
+    )

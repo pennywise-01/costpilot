@@ -12,6 +12,8 @@ from app.auth.schemas import (
     UserResponse,
     UserUpdate,
     TokenResponse,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
 from app.auth.service import (
     create_session_binding,
@@ -22,6 +24,8 @@ from app.auth.service import (
     verify_password,
     blacklist_token,
     revoke_session_binding,
+    create_password_reset_token,
+    reset_password as reset_user_password,
 )
 from app.auth.dependencies import get_current_user, get_current_token
 from app.auth.models import User
@@ -164,3 +168,37 @@ async def unlock_user(
     user.locked_until = None
     await db.flush()
     return {"message": "User unlocked"}
+
+
+@router.post("/forgot-password", dependencies=[Depends(auth_limiter)])
+async def forgot_password(data: ForgotPasswordRequest):
+    """Request a password reset email. Always returns success to prevent email enumeration."""
+    token = await create_password_reset_token(data.email)
+    if token:
+        from app.notifications.email_service import send_email, _wrap_html
+
+        reset_url = f"{settings.FRONTEND_BASE_URL}/reset-password/{token}"
+        subject = "[CostPilot] Reset your password"
+        body_content = f"""
+        <h2>Password Reset Request</h2>
+        <p>We received a request to reset your password.</p>
+        <p>Click the button below to choose a new password. This link expires in 15 minutes.</p>
+        <p><a href="{reset_url}" class="btn">Reset Password</a></p>
+        <p style="margin-top:24px;color:#999;font-size:13px;">
+          If you did not request a password reset, you can safely ignore this email.<br>
+          Your password will not be changed.
+        </p>
+        """
+        html_body = _wrap_html(subject, body_content)
+        try:
+            await send_email(data.email, subject, html_body)
+        except Exception:
+            pass  # Don't leak email-sending errors to client
+    return {"message": "If an account with that email exists, a reset link has been sent."}
+
+
+@router.post("/reset-password", dependencies=[Depends(auth_limiter)])
+async def reset_password(data: ResetPasswordRequest):
+    """Reset password using a valid reset token."""
+    user = await reset_user_password(data.token, data.password)
+    return {"message": "Password has been reset successfully."}

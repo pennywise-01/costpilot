@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Form, Input, Button, message, Typography } from 'antd';
+import { Form, Input, Button, message, notification, Typography } from 'antd';
 import { MailOutlined, LockOutlined } from '@ant-design/icons';
 import { authApi, type LoginData } from '@/api/auth';
 import { useAuthStore } from '@/store/authStore';
@@ -19,9 +19,19 @@ const Login: React.FC = () => {
       setAuth(data.access_token, data.user);
       navigate('/');
     } catch (err: any) {
+      const status = err?.response?.status;
       const detail =
         err?.response?.data?.detail || 'Login failed. Please try again.';
-      message.error(detail);
+
+      if (status === 403) {
+        notification.warning({
+          message: 'Account Suspended',
+          description: detail,
+          duration: 0,
+        });
+      } else {
+        message.error(detail);
+      }
     } finally {
       setLoading(false);
     }
@@ -50,6 +60,12 @@ const Login: React.FC = () => {
         rules={[{ required: true, message: 'Please enter your password' }]}
       >
         <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+      </Form.Item>
+
+      <Form.Item>
+        <div style={{ textAlign: 'right', marginBottom: 8 }}>
+          <Link to="/forgot-password">Forgot password?</Link>
+        </div>
       </Form.Item>
 
       <Form.Item>

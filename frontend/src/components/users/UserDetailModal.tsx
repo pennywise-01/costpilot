@@ -13,6 +13,8 @@ import {
   Card,
   Alert,
   Select,
+  Input,
+  Form,
   message,
   Divider,
 } from 'antd';
@@ -71,7 +73,10 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
 
-  const { suspendUser, activateUser, removeUser, updateUserRoles } = useUserStore();
+  const { suspendUser, activateUser, removeUser, resetPassword, updateUserRoles } = useUserStore();
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetForm] = Form.useForm();
 
   useEffect(() => {
     if (open && user && orgId) {
@@ -163,6 +168,23 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
       onClose();
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Failed to remove user');
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!user || !orgId) return;
+    try {
+      const values = await resetForm.validateFields();
+      setResetLoading(true);
+      await resetPassword(orgId, user.id, values.newPassword);
+      message.success('Password reset successfully');
+      setResetModalOpen(false);
+      resetForm.resetFields();
+    } catch (error: any) {
+      if (error?.errorFields) return;
+      message.error(error.response?.data?.detail || 'Failed to reset password');
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -323,6 +345,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
   ];
 
   return (
+    <>
     <Modal
       title={user?.display_name || 'User Details'}
       open={open}
@@ -345,8 +368,11 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
         <Button key="remove" danger icon={<DeleteOutlined />} onClick={handleRemove}>
           Remove
         </Button>,
+        <Button key="reset-password" icon={<LockOutlined />} onClick={() => setResetModalOpen(true)}>
+          Reset Password
+        </Button>,
       ]}
-    >
+      >
       <Spin spinning={loading}>
         {userDetail && (
           <Alert
@@ -360,5 +386,53 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
         <Tabs activeKey={activeTab} onChange={setActiveTab} items={items} />
       </Spin>
     </Modal>
+
+    <Modal
+      title="Reset Password"
+      open={resetModalOpen}
+      onCancel={() => { setResetModalOpen(false); resetForm.resetFields(); }}
+      onOk={handleResetPassword}
+      confirmLoading={resetLoading}
+      okText="Reset Password"
+    >
+      <Alert
+        message="This will immediately change the password for this user."
+        description="The user will need to use the new password for their next login."
+        type="warning"
+        showIcon
+        style={{ marginBottom: 16 }}
+      />
+      <Form form={resetForm} layout="vertical">
+        <Form.Item
+          name="newPassword"
+          label="New Password"
+          rules={[
+            { required: true, message: 'Please enter a new password' },
+            { min: 8, message: 'Password must be at least 8 characters' },
+          ]}
+        >
+          <Input.Password placeholder="Enter new password" />
+        </Form.Item>
+        <Form.Item
+          name="confirmPassword"
+          label="Confirm Password"
+          dependencies={['newPassword']}
+          rules={[
+            { required: true, message: 'Please confirm the password' },
+            ({ getFieldValue }) => ({
+              validator(_, value) {
+                if (!value || getFieldValue('newPassword') === value) {
+                  return Promise.resolve();
+                }
+                return Promise.reject(new Error('Passwords do not match'));
+              },
+            }),
+          ]}
+        >
+          <Input.Password placeholder="Confirm new password" />
+        </Form.Item>
+      </Form>
+    </Modal>
+    </>
   );
 };

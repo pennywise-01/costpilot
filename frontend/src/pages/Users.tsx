@@ -21,6 +21,7 @@ import {
   Spin,
   Pagination,
   Alert,
+  Form,
 } from 'antd';
 import {
   PlusOutlined,
@@ -34,6 +35,7 @@ import {
   SearchOutlined,
   ReloadOutlined,
   MailOutlined,
+  KeyOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useUserStore } from '../store/userStore';
@@ -81,10 +83,11 @@ const Users: React.FC = () => {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
-    type: 'suspend' | 'activate' | 'remove';
+    type: 'suspend' | 'activate' | 'remove' | 'reset-password';
     user: User;
     visible: boolean;
   } | null>(null);
+  const [resetPasswordForm] = Form.useForm();
 
   const currentOrg = useOrgStore((state) => state.currentOrg);
   
@@ -99,6 +102,7 @@ const Users: React.FC = () => {
     suspendUser,
     activateUser,
     removeUser,
+    resetPassword,
   } = useUserStore();
 
   useEffect(() => {
@@ -150,6 +154,20 @@ const Users: React.FC = () => {
       setConfirmAction(null);
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Failed to remove user');
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!currentOrg?.id || !confirmAction) return;
+    try {
+      const values = await resetPasswordForm.validateFields();
+      await resetPassword(currentOrg.id, confirmAction.user.id, values.newPassword);
+      message.success(`Password reset for ${confirmAction.user.display_name}`);
+      setConfirmAction(null);
+      resetPasswordForm.resetFields();
+    } catch (err: any) {
+      if (err?.errorFields) return;
+      message.error(err.response?.data?.detail || 'Failed to reset password');
     }
   };
 
@@ -292,6 +310,17 @@ const Users: React.FC = () => {
                 onClick: () =>
                   setConfirmAction({
                     type: 'remove',
+                    user: record,
+                    visible: true,
+                  }),
+              },
+              {
+                key: 'reset-password',
+                icon: <KeyOutlined />,
+                label: 'Reset Password',
+                onClick: () =>
+                  setConfirmAction({
+                    type: 'reset-password',
                     user: record,
                     visible: true,
                   }),
@@ -453,35 +482,85 @@ const Users: React.FC = () => {
             ? 'Suspend User'
             : confirmAction?.type === 'activate'
             ? 'Activate User'
+            : confirmAction?.type === 'reset-password'
+            ? 'Reset Password'
             : 'Remove User'
         }
         open={confirmAction?.visible || false}
-        onOk={handleConfirmAction}
-        onCancel={() => setConfirmAction(null)}
+        onOk={
+          confirmAction?.type === 'reset-password' ? handleResetPassword : handleConfirmAction
+        }
+        onCancel={() => { setConfirmAction(null); resetPasswordForm.resetFields(); }}
         okText={
           confirmAction?.type === 'suspend'
             ? 'Suspend'
             : confirmAction?.type === 'activate'
             ? 'Activate'
+            : confirmAction?.type === 'reset-password'
+            ? 'Reset Password'
             : 'Remove'
         }
         okButtonProps={{
           danger: confirmAction?.type === 'suspend' || confirmAction?.type === 'remove',
         }}
       >
-        <p>
-          Are you sure you want to{' '}
-          {confirmAction?.type === 'suspend'
-            ? 'suspend'
-            : confirmAction?.type === 'activate'
-            ? 'activate'
-            : 'remove'}{' '}
-          <strong>{confirmAction?.user.display_name}</strong>?
-        </p>
-        {confirmAction?.type === 'remove' && (
-          <p style={{ color: '#ff4d4f' }}>
-            This action cannot be undone. The user will be removed from the organization.
-          </p>
+        {confirmAction?.type === 'reset-password' ? (
+          <>
+            <Alert
+              message="This will immediately change the password for this user."
+              description="The user will need to use the new password for their next login."
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+            <Form form={resetPasswordForm} layout="vertical">
+              <Form.Item
+                name="newPassword"
+                label="New Password"
+                rules={[
+                  { required: true, message: 'Please enter a new password' },
+                  { min: 8, message: 'Password must be at least 8 characters' },
+                ]}
+              >
+                <Input.Password placeholder="Enter new password" />
+              </Form.Item>
+              <Form.Item
+                name="confirmPassword"
+                label="Confirm Password"
+                dependencies={['newPassword']}
+                rules={[
+                  { required: true, message: 'Please confirm the password' },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue('newPassword') === value) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error('Passwords do not match'));
+                    },
+                  }),
+                ]}
+              >
+                <Input.Password placeholder="Confirm new password" />
+              </Form.Item>
+            </Form>
+          </>
+        ) : (
+          <>
+            <p>
+              Are you sure you want to{' '}
+              {confirmAction?.type === 'suspend'
+                ? 'suspend'
+                : confirmAction?.type === 'activate'
+                ? 'activate'
+                : 'remove'}{' '}
+              <strong>{confirmAction?.user.display_name}</strong>?
+            </p>
+            {confirmAction?.type === 'remove' && (
+              <p style={{ color: '#ff4d4f' }}>
+                This action cannot be undone. The user will be removed from the organization.
+              </p>
+            )}
+          </>
         )}
       </Modal>
     </>

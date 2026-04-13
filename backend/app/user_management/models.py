@@ -7,7 +7,7 @@ from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.shared.models import BaseModel, OptimisticLockingMixin
+from app.shared.models import BaseModel, BaseModelWithoutSoftDelete, OptimisticLockingMixin
 from app.shared.enums import UserStatus
 from app.shared.utils.time import utc_now
 from app.user_management.enums import InvitationStatus, UserAction
@@ -85,7 +85,7 @@ class UserActivityLog(BaseModel):
     organization: Mapped["Organization"] = relationship("Organization", lazy="selectin")
 
 
-class UserPreferences(BaseModel, OptimisticLockingMixin):
+class UserPreferences(BaseModelWithoutSoftDelete, OptimisticLockingMixin):
     """User-specific preferences and settings."""
     
     __tablename__ = "user_preferences"

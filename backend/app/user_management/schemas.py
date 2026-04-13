@@ -105,6 +105,11 @@ class UserStatusUpdateRequest(BaseModel):
     reason: str | None = Field(None, max_length=500)
 
 
+class AdminResetPasswordRequest(BaseModel):
+    """Request for admin to reset a user's password."""
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 # ============== Invitation Schemas ==============
 
 class UserInviteRequest(BaseModel):

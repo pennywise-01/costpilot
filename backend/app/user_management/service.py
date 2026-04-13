@@ -870,6 +870,38 @@ async def activate_user(
     return await get_user_list_item(db, org_id, user_id)
 
 
+async def admin_reset_user_password(
+    db: AsyncSession,
+    org_id: str,
+    user_id: str,
+    new_password: str,
+    reset_by: str
+) -> UserListItem:
+    """Admin-initiated password reset for a user."""
+    from app.auth.service import hash_password
+
+    user, _ = await _get_user_employee(db, org_id, user_id)
+
+    # Prevent resetting own password via admin endpoint (use /auth/me for that)
+    if user_id == reset_by:
+        raise ForbiddenError("Cannot reset your own password via admin endpoint. Use the Settings page instead.")
+
+    user.hashed_password = hash_password(new_password)
+    user.failed_login_attempts = 0
+    user.locked_until = None
+
+    await db.flush()
+
+    # Log activity
+    await log_user_activity(
+        db, user_id, org_id, UserAction.PASSWORD_RESET_COMPLETED, reset_by,
+        resource_type="user", resource_id=user_id,
+        action_metadata={"reset_by_admin": True}
+    )
+
+    return await get_user_list_item(db, org_id, user_id)
+
+
 async def remove_user_from_organization(
     db: AsyncSession,
     org_id: str,

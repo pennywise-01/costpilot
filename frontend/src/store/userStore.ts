@@ -52,6 +52,7 @@ interface UserState {
   suspendUser: (orgId: string, userId: string, reason?: string) => Promise<void>;
   activateUser: (orgId: string, userId: string) => Promise<void>;
   removeUser: (orgId: string, userId: string) => Promise<void>;
+  resetPassword: (orgId: string, userId: string, newPassword: string) => Promise<void>;
   inviteUser: (orgId: string, data: UserInviteRequest) => Promise<UserInviteResponse>;
   inviteBulk: (orgId: string, invitations: UserInviteRequest[]) => Promise<BulkInviteResponse>;
   updateUserRoles: (orgId: string, userId: string, data: UserRoleUpdateRequest) => Promise<void>;
@@ -209,6 +210,24 @@ export const useUserStore = create<UserState>()(
         } catch (error: any) {
           set({
             error: error.response?.data?.detail || 'Failed to remove user',
+            loading: false,
+          });
+          throw error;
+        }
+      },
+
+      resetPassword: async (orgId, userId, newPassword) => {
+        set({ loading: true, error: null });
+        try {
+          await userManagementApi.resetPassword(orgId, userId, newPassword);
+          await get().fetchUsers(orgId);
+          if (get().selectedUser?.id === userId) {
+            await get().fetchUserDetail(orgId, userId);
+          }
+          set({ loading: false });
+        } catch (error: any) {
+          set({
+            error: error.response?.data?.detail || 'Failed to reset password',
             loading: false,
           });
           throw error;

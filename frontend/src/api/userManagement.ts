@@ -189,6 +189,9 @@ export const userManagementApi = {
   removeUser: (orgId: string, userId: string) =>
     apiClient.delete<void>(`/organizations/${orgId}/users/${userId}`),
 
+  resetPassword: (orgId: string, userId: string, newPassword: string) =>
+    apiClient.post<User>(`/organizations/${orgId}/users/${userId}/reset-password`, { new_password: newPassword }),
+
   // Invitations
   inviteUser: (orgId: string, data: UserInviteRequest) =>
     apiClient.post<UserInviteResponse>(`/organizations/${orgId}/users/invite`, data),

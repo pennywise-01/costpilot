@@ -16,6 +16,7 @@ import {
 } from 'antd';
 import { useAuthStore } from '@/store/authStore';
 import { useCurrentOrgId } from '@/hooks/useCurrentOrgId';
+import { authApi } from '@/api/auth';
 import { notificationsApi } from '@/api/notifications';
 import { organizationsApi } from '@/api/organizations';
 
@@ -28,20 +29,53 @@ const formLayout = {
 
 const ProfileTab: React.FC = () => {
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
-  const handleSaveProfile = () => {
-    profileForm.validateFields().then(() => {
+  const handleSaveProfile = async () => {
+    try {
+      const values = await profileForm.validateFields();
+      setProfileLoading(true);
+      const { data } = await authApi.updateMe({ display_name: values.displayName });
+      setUser(data);
       message.success('Profile updated successfully');
-    });
+    } catch (err: any) {
+      if (err?.response?.data?.detail) {
+        message.error(err.response.data.detail);
+      } else if (err?.errorFields) {
+        // form validation error, ignore
+      } else {
+        message.error('Failed to update profile');
+      }
+    } finally {
+      setProfileLoading(false);
+    }
   };
 
-  const handleUpdatePassword = () => {
-    passwordForm.validateFields().then(() => {
+  const handleUpdatePassword = async () => {
+    try {
+      const values = await passwordForm.validateFields();
+      setPasswordLoading(true);
+      await authApi.updateMe({
+        current_password: values.currentPassword,
+        password: values.newPassword,
+      });
       message.success('Password updated successfully');
       passwordForm.resetFields();
-    });
+    } catch (err: any) {
+      if (err?.response?.data?.detail) {
+        message.error(err.response.data.detail);
+      } else if (err?.errorFields) {
+        // form validation error, ignore
+      } else {
+        message.error('Failed to update password');
+      }
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   return (
@@ -67,7 +101,7 @@ const ProfileTab: React.FC = () => {
             <Input disabled />
           </Form.Item>
           <Form.Item wrapperCol={{ offset: 6, span: 18 }}>
-            <Button type="primary" onClick={handleSaveProfile}>
+            <Button type="primary" onClick={handleSaveProfile} loading={profileLoading}>
               Save Profile
             </Button>
           </Form.Item>
@@ -111,7 +145,7 @@ const ProfileTab: React.FC = () => {
             <Input.Password />
           </Form.Item>
           <Form.Item wrapperCol={{ offset: 6, span: 18 }}>
-            <Button type="primary" onClick={handleUpdatePassword}>
+            <Button type="primary" onClick={handleUpdatePassword} loading={passwordLoading}>
               Update Password
             </Button>
           </Form.Item>
