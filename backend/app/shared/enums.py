@@ -116,6 +116,7 @@ class RBACResourceType(str, enum.Enum):
     USER = "user"
     NOTIFICATION = "notification"
     ENTERPRISE = "enterprise"
+    DASHBOARD = "dashboard"
 
 
 class ABACOperator(str, enum.Enum):

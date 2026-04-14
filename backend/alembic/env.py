@@ -24,6 +24,7 @@ from app.rules.models import Rule, Condition  # noqa: F401
 from app.notifications.models import NotificationPreference, NotificationLog  # noqa: F401
 from app.recommendation_rules.models import RecommendationRule, RecommendationRuleCondition  # noqa: F401
 from app.enterprise.modules.rbac.models import Role, RolePermission, UserRoleAssignment, ABACPolicy, AccessReview, SSOConfig  # noqa: F401
+from app.dashboards.models import Dashboard  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

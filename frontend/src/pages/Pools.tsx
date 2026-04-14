@@ -325,7 +325,7 @@ const Pools: React.FC = () => {
               style={{ width: '100%' }}
               min={0}
               formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={(value) => value?.replace(/\$\s?|(,*)/g, '') as unknown as number}
+              parser={(value) => Number(value?.replace(/\$\s?|(,*)/g, '') || 0) as 0}
               placeholder="10,000"
             />
           </Form.Item>

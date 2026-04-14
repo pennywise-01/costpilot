@@ -13,11 +13,10 @@ __pycache__/
 postgres_data/
 mongodb_data/
 redis_data/
-plans/
+
 *.png
 docs/
 docs-website/
-backend/tests/
 frontend/tests/
 .vscode/
 pics/

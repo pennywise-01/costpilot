@@ -60,6 +60,10 @@ async def create_organization(
             assigned_by=user.id
         )
 
+    # Seed default dashboard inside the org creation transaction
+    from app.dashboards.seed import seed_default_dashboard
+    await seed_default_dashboard(db, org.id, user.id)
+
     await db.commit()
     await db.refresh(org)
 

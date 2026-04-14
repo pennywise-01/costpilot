@@ -50,6 +50,7 @@ from app.scheduler.router import router as scheduler_router
 from app.scheduler.executor import init_scheduler, load_schedulers_from_db, shutdown_scheduler
 from app.user_management.router import router as user_management_router
 from app.enterprise.modules.export.router import router as export_router
+from app.dashboards.router import router as dashboards_router
 
 # Import all models so Base.metadata knows about them
 from app.auth.models import User  # noqa: F401
@@ -69,6 +70,7 @@ from app.user_management.models import (  # noqa: F401
 from app.enterprise.modules.export.models import (  # noqa: F401
     ExportTemplate, ExportJob, ScheduledExport,
 )
+from app.dashboards.models import Dashboard  # noqa: F401
 from app.security.models import AuditLog, SecurityAlert  # noqa: F401
 from app.idempotency.models import IdempotencyKey  # noqa: F401
 
@@ -283,6 +285,7 @@ app.include_router(notifications_router, prefix="/api/v1", tags=["Notifications"
 app.include_router(scheduler_router, prefix="/api/v1", tags=["Scheduler"])
 app.include_router(user_management_router, prefix="/api/v1", tags=["User Management"])
 app.include_router(export_router, prefix="/api/v1/enterprise", tags=["Data Export"])
+app.include_router(dashboards_router, prefix="/api/v1", tags=["Dashboards"])
 app.include_router(feature_flags_router, prefix="/api/v1", tags=["Feature Flags"])
 
 # Metrics router (no prefix - /metrics at root)

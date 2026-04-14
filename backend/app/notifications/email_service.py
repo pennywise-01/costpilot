@@ -5,6 +5,7 @@ from email.mime.multipart import MIMEMultipart
 import aiosmtplib
 import boto3
 from botocore.exceptions import ClientError
+import httpx
 
 from app.config import settings
 from app.shared.enums import NotificationType
@@ -228,9 +229,11 @@ RENDERERS: dict[NotificationType, callable] = {
 
 
 async def send_email(to: str, subject: str, html_body: str) -> None:
-    """Send an email via configured provider (SMTP or SES). Raises on failure."""
+    """Send an email via configured provider (SMTP, SES, or SendGrid). Raises on failure."""
     if settings.EMAIL_PROVIDER == "ses":
         await send_email_ses(to, subject, html_body)
+    elif settings.EMAIL_PROVIDER == "sendgrid":
+        await send_email_sendgrid(to, subject, html_body)
     else:
         await send_email_smtp(to, subject, html_body)
 
@@ -264,6 +267,34 @@ async def send_email_ses(to: str, subject: str, html_body: str) -> None:
         error_message = e.response["Error"]["Message"]
         logger.error("SES email failed: %s - %s", error_code, error_message)
         raise
+
+
+async def send_email_sendgrid(to: str, subject: str, html_body: str) -> None:
+    """Send an email via SendGrid REST API. Raises on failure."""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.sendgrid.com/v3/mail/send",
+            headers={
+                "Authorization": f"Bearer {settings.SENDGRID_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "personalizations": [{"to": [{"email": to}]}],
+                "from": {"email": settings.SENDGRID_FROM_EMAIL},
+                "subject": subject,
+                "content": [{"type": "text/html", "value": html_body}],
+            },
+        )
+    if response.status_code >= 400:
+        logger.error(
+            "SendGrid email failed: %s - %s",
+            response.status_code,
+            response.text,
+        )
+        raise RuntimeError(
+            f"SendGrid API error: {response.status_code} - {response.text}"
+        )
+    logger.info("SendGrid email sent to %s: %s", to, subject)
 
 
 async def send_email_smtp(to: str, subject: str, html_body: str) -> None:

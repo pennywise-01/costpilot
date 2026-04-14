@@ -35,13 +35,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "5173:5173"
+      - "5173:80"
     environment:
       - VITE_API_TARGET=http://backend:8000
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: pnpm dev --host 0.0.0.0
 
   postgres:
     image: postgres:16-alpine

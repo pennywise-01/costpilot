@@ -1,0 +1,70 @@
+/* Dashboard Grid Overrides */
+
+.dashboard-grid {
+  min-height: 200px;
+}
+
+/* Widget card height fill */
+.dashboard-grid .react-grid-item {
+  transition: all 200ms ease;
+}
+
+.dashboard-grid .react-grid-item > div {
+  height: 100%;
+}
+
+.dashboard-grid .react-grid-item > div > .ant-card {
+  height: 100%;
+}
+
+/* Edit mode styling */
+.dashboard-grid.edit-mode .react-grid-item {
+  cursor: grab;
+}
+
+.dashboard-grid.edit-mode .react-grid-item:active {
+  cursor: grabbing;
+}
+
+/* Resize handle styling */
+.react-resizable-handle {
+  width: 20px;
+  height: 20px;
+}
+
+.react-resizable-handle-se {
+  bottom: 2px;
+  right: 2px;
+  cursor: se-resize;
+}
+
+.react-resizable-handle-se::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid rgba(0, 0, 0, 0.2);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Placeholder during drag */
+.react-grid-placeholder {
+  background: #1677ff !important;
+  opacity: 0.15 !important;
+  border-radius: 12px !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dashboard-grid {
+    margin: 0 -8px;
+  }
+}
+
+@media (max-width: 576px) {
+  .dashboard-grid .ant-card-head-title {
+    font-size: 13px;
+  }
+}

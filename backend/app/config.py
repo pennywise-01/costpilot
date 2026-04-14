@@ -53,13 +53,17 @@ class Settings(BaseSettings):
     SMTP_FROM: str = "noreply@costpilot.io"
 
     # Email Provider Selection
-    EMAIL_PROVIDER: str = "smtp"  # "smtp" or "ses"
+    EMAIL_PROVIDER: str = "smtp"  # "smtp", "ses", or "sendgrid"
 
     # AWS SES Configuration
     AWS_REGION: str = "us-east-1"  # AWS region for SES (must match where identity is verified)
     AWS_ACCESS_KEY_ID: str = ""  # IAM user access key for SES
     AWS_SECRET_ACCESS_KEY: str = ""  # IAM user secret access key for SES
     SES_FROM_EMAIL: str = "noreply@costpilot.io"  # Verified SES sender email
+
+    # SendGrid Configuration
+    SENDGRID_API_KEY: str = ""  # SendGrid API key
+    SENDGRID_FROM_EMAIL: str = "noreply@costpilot.io"  # Verified SendGrid sender email
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
@@ -164,6 +168,15 @@ class Settings(BaseSettings):
     COST_CACHE_AUTO_REFRESH: bool = True  # Auto-refresh via scheduler
     COST_CACHE_FALLBACK_TO_LIVE: bool = True  # Call CSP APIs on cache miss
     COST_CACHE_REFRESH_TIMEOUT_SECONDS: float = 300.0  # Max time for cache refresh
+
+    # Dashboard Settings
+    DASHBOARD_MAX_PER_ORG: int = 20
+    DASHBOARD_MAX_WIDGETS: int = 30
+    DASHBOARD_LAYOUT_MAX_SIZE_KB: int = 64
+    DASHBOARD_WIDGET_CONFIG_MAX_SIZE_KB: int = 128
+    DASHBOARD_BATCH_MAX_WIDGETS: int = 30
+    DASHBOARD_BATCH_RATE_LIMIT: int = 20
+    DASHBOARD_BATCH_CACHE_TTL: int = 300
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
