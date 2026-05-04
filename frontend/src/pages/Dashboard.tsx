@@ -13,6 +13,7 @@ import { useCurrentOrgId } from '@/hooks/useCurrentOrgId';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { dashboardsApi, type DashboardDetail, type LayoutItem, type WidgetConfigEntry } from '@/api/dashboards';
+import apiClient from '@/api/client';
 import { WIDGET_REGISTRY } from '@/components/dashboard/widgetRegistry';
 
 import DashboardGrid from '@/components/dashboard/DashboardGrid';
@@ -53,6 +54,29 @@ const getRelativeTime = (dateStr: string | null) => {
   if (hours < 24) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
 };
+
+const normalizeDashboardLayout = (
+  layout: LayoutItem[],
+  widgets: Record<string, WidgetConfigEntry>,
+): LayoutItem[] => layout.filter((item) => widgets[item.i]).map((item) => {
+  const widgetConfig = widgets[item.i];
+  const definition = widgetConfig ? WIDGET_REGISTRY[widgetConfig.type] : null;
+  const minW = definition?.minW ?? item.minW ?? 1;
+  const minH = definition?.minH ?? item.minH ?? 1;
+  const w = Math.min(12, Math.max(item.w, minW));
+  const h = Math.max(item.h, minH);
+  return {
+    ...item,
+    x: Math.min(Math.max(item.x, 0), 12 - w),
+    y: Math.max(item.y, 0),
+    w,
+    h,
+    minW,
+    minH,
+    maxW: 12,
+    maxH: Math.max(item.maxH ?? 20, h),
+  };
+});
 
 // --- Main Component ---
 
@@ -106,12 +130,12 @@ const Dashboard: React.FC = () => {
   // Cache status
   const { data: cacheStatus } = useQuery({
     queryKey: ['cache-status', orgId],
-    queryFn: () => fetch(`/api/v1/organizations/${orgId}/expenses/cache-status`).then((r) => r.json()),
+    queryFn: () => apiClient.get(`/organizations/${orgId}/expenses/cache-status`).then((r) => r.data),
     staleTime: 60_000,
   });
 
   const refreshMutation = useMutation({
-    mutationFn: () => fetch(`/api/v1/organizations/${orgId}/expenses/refresh`, { method: 'POST' }).then((r) => r.json()),
+    mutationFn: () => apiClient.post(`/organizations/${orgId}/expenses/refresh`, { force: false }).then((r) => r.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dashboard-data'] }),
   });
 
@@ -119,8 +143,8 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (dashboardDetail && !isDirty) {
-      setLocalLayout(dashboardDetail.layout_config);
       setLocalWidgets(dashboardDetail.widget_config);
+      setLocalLayout(normalizeDashboardLayout(dashboardDetail.layout_config, dashboardDetail.widget_config));
     }
   }, [dashboardDetail, isDirty]);
 
@@ -143,7 +167,7 @@ const Dashboard: React.FC = () => {
     if (!dashboardDetail || !localLayout || !localWidgets) return;
     try {
       await dashboardsApi.update(orgId, dashboardDetail.id, {
-        layout_config: localLayout,
+        layout_config: normalizeDashboardLayout(localLayout, localWidgets),
         widget_config: localWidgets,
         version: dashboardDetail.version,
       });
@@ -340,6 +364,7 @@ const Dashboard: React.FC = () => {
           widgets={currentWidgets}
           data={widgetDataQuery.data?.data}
           errors={widgetDataQuery.data?.errors}
+          loading={widgetDataQuery.isLoading}
           editMode={editMode}
           onLayoutChange={handleLayoutChange}
           onRemoveWidget={editMode ? handleRemoveWidget : undefined}

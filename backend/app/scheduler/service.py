@@ -119,7 +119,7 @@ async def get_scheduler_config(
         select(SchedulerConfig).where(
             SchedulerConfig.id == config_id,
             SchedulerConfig.organization_id == org_id,
-        )
+        ).limit(1)
     )
     config = result.scalar_one_or_none()
     
@@ -384,7 +384,7 @@ async def get_scheduler_run(
             SchedulerRun.id == run_id,
             SchedulerRun.scheduler_config_id == config_id,
             SchedulerRun.organization_id == org_id,
-        )
+        ).limit(1)
     )
     run = result.scalar_one_or_none()
     
@@ -551,7 +551,7 @@ async def get_dead_letter_job(
         .where(
             DeadLetterJob.id == job_id,
             SchedulerConfig.organization_id == org_id,
-        )
+        ).limit(1)
     )
     job = result.scalar_one_or_none()
 

@@ -36,6 +36,7 @@ const PieChartWidget: React.FC<PieChartWidgetProps> = ({
     data: chartData,
     angleField: 'total',
     colorField: 'name',
+    autoFit: true,
     height: 250,
     radius: 0.9,
     innerRadius: 0.5,

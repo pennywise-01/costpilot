@@ -14,7 +14,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from uuid import UUID
 
-from app.shared.exceptions import NotFoundError, ConflictError
+from app.shared.exceptions import NotFoundError, ConflictError, StaleDataError
 from app.shared.utils.time import utc_now
 from app.database import Base
 
@@ -265,7 +265,18 @@ class BaseService(Generic[T]):
         if hasattr(entity, 'updated_at'):
             entity.updated_at = utc_now()
 
-        await self.db.flush()
+        try:
+            await self.db.flush()
+        except Exception as exc:
+            # Catch SQLAlchemy's StaleDataError from OptimisticLockingMixin
+            exc_name = type(exc).__name__
+            if "StaleDataError" in exc_name or "OptimisticConcurrencyError" in exc_name:
+                raise StaleDataError(
+                    resource_type=self.model_class.__name__,
+                    resource_id=str(id),
+                )
+            raise
+
         await self.db.refresh(entity)
 
         return entity

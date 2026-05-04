@@ -1,0 +1,164 @@
+2026-04-21 17:15:26.748 | INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+2026-04-21 17:15:26.748 | INFO  [alembic.runtime.migration] Will assume transactional DDL.
+2026-04-21 17:15:27.791 | INFO  [alembic.runtime.migration] Running upgrade 025 -> 026, Add missing unique constraints to prevent duplicate rows.
+2026-04-21 17:15:27.830 | Traceback (most recent call last):
+2026-04-21 17:15:27.830 |   File "/usr/local/bin/alembic", line 10, in <module>
+2026-04-21 17:15:27.831 |     sys.exit(main())
+2026-04-21 17:15:27.831 |              ^^^^^^
+2026-04-21 17:15:27.831 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 1047, in main
+2026-04-21 17:15:27.831 |     CommandLine(prog=prog).main(argv=argv)
+2026-04-21 17:15:27.831 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 1037, in main
+2026-04-21 17:15:27.831 |     self.run_cmd(cfg, options)
+2026-04-21 17:15:27.831 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 971, in run_cmd
+2026-04-21 17:15:27.831 |     fn(
+2026-04-21 17:15:27.831 |   File "/usr/local/lib/python3.12/site-packages/alembic/command.py", line 483, in upgrade
+2026-04-21 17:15:27.832 |     script.run_env()
+2026-04-21 17:15:27.832 |   File "/usr/local/lib/python3.12/site-packages/alembic/script/base.py", line 545, in run_env
+2026-04-21 17:15:27.832 |     util.load_python_file(self.dir, "env.py")
+2026-04-21 17:15:27.832 |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 116, in load_python_file
+2026-04-21 17:15:27.832 |     module = load_module_py(module_id, path)
+2026-04-21 17:15:27.832 |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.832 |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 136, in load_module_py
+2026-04-21 17:15:27.832 |     spec.loader.exec_module(module)  # type: ignore
+2026-04-21 17:15:27.833 |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.833 |   File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+2026-04-21 17:15:27.833 |   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2026-04-21 17:15:27.833 |   File "/app/alembic/env.py", line 74, in <module>
+2026-04-21 17:15:27.835 |     run_migrations_online()
+2026-04-21 17:15:27.835 |   File "/app/alembic/env.py", line 68, in run_migrations_online
+2026-04-21 17:15:27.837 |     asyncio.run(run_async_migrations())
+2026-04-21 17:15:27.837 |   File "/usr/local/lib/python3.12/asyncio/runners.py", line 195, in run
+2026-04-21 17:15:27.838 |     return runner.run(main)
+2026-04-21 17:15:27.838 |            ^^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.838 |   File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+2026-04-21 17:15:27.838 |     return self._loop.run_until_complete(task)
+2026-04-21 17:15:27.838 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.838 |   File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+2026-04-21 17:15:27.838 |     return future.result()
+2026-04-21 17:15:27.838 |            ^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.838 |   File "/app/alembic/env.py", line 63, in run_async_migrations
+2026-04-21 17:15:27.840 |     await connection.run_sync(do_run_migrations)
+2026-04-21 17:15:27.840 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py", line 888, in run_sync
+2026-04-21 17:15:27.840 |     return await greenlet_spawn(
+2026-04-21 17:15:27.840 |            ^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.840 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 203, in greenlet_spawn
+2026-04-21 17:15:27.840 |     result = context.switch(value)
+2026-04-21 17:15:27.840 |              ^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.840 |   File "/app/alembic/env.py", line 53, in do_run_migrations
+2026-04-21 17:15:27.843 |     context.run_migrations()
+2026-04-21 17:15:27.843 |   File "<string>", line 8, in run_migrations
+2026-04-21 17:15:27.843 |   File "/usr/local/lib/python3.12/site-packages/alembic/runtime/environment.py", line 969, in run_migrations
+2026-04-21 17:15:27.843 |     self.get_context().run_migrations(**kw)
+2026-04-21 17:15:27.843 |   File "/usr/local/lib/python3.12/site-packages/alembic/runtime/migration.py", line 626, in run_migrations
+2026-04-21 17:15:27.843 |     step.migration_fn(**kw)
+2026-04-21 17:15:27.843 |   File "/app/alembic/versions/026_add_missing_unique_constraints.py", line 57, in upgrade
+2026-04-21 17:15:27.846 |     op.create_unique_constraint(
+2026-04-21 17:15:27.846 |   File "<string>", line 8, in create_unique_constraint
+2026-04-21 17:15:27.846 |   File "<string>", line 3, in create_unique_constraint
+2026-04-21 17:15:27.846 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/ops.py", line 497, in create_unique_constraint
+2026-04-21 17:15:27.846 |     return operations.invoke(op)
+2026-04-21 17:15:27.846 |            ^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.846 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/base.py", line 452, in invoke
+2026-04-21 17:15:27.846 |     return fn(self, operation)
+2026-04-21 17:15:27.846 |            ^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.846 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/toimpl.py", line 222, in create_constraint
+2026-04-21 17:15:27.846 |     operation.to_constraint(operations.migration_context)
+2026-04-21 17:15:27.846 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/ops.py", line 439, in to_constraint
+2026-04-21 17:15:27.846 |     return schema_obj.unique_constraint(
+2026-04-21 17:15:27.846 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.846 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/schemaobj.py", line 132, in unique_constraint
+2026-04-21 17:15:27.846 |     t = sa_schema.Table(
+2026-04-21 17:15:27.846 |         ^^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.846 |   File "<string>", line 2, in __new__
+2026-04-21 17:15:27.846 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/deprecations.py", line 281, in warned
+2026-04-21 17:15:27.847 |     return fn(*args, **kwargs)  # type: ignore[no-any-return]
+2026-04-21 17:15:27.847 |            ^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.847 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/schema.py", line 429, in __new__
+2026-04-21 17:15:27.847 |     return cls._new(*args, **kw)
+2026-04-21 17:15:27.847 |            ^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.847 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/schema.py", line 459, in _new
+2026-04-21 17:15:27.847 |     if key in metadata.tables:
+2026-04-21 17:15:27.847 |        ^^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:15:27.847 | TypeError: unhashable type: 'list'
+2026-04-21 17:16:39.586 | INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+2026-04-21 17:16:39.586 | INFO  [alembic.runtime.migration] Will assume transactional DDL.
+2026-04-21 17:16:41.238 | INFO  [alembic.runtime.migration] Running upgrade 025 -> 026, Add missing unique constraints to prevent duplicate rows.
+2026-04-21 17:16:41.254 | Traceback (most recent call last):
+2026-04-21 17:16:41.254 |   File "/usr/local/bin/alembic", line 10, in <module>
+2026-04-21 17:16:41.254 |     sys.exit(main())
+2026-04-21 17:16:41.254 |              ^^^^^^
+2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 1047, in main
+2026-04-21 17:16:41.254 |     CommandLine(prog=prog).main(argv=argv)
+2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 1037, in main
+2026-04-21 17:16:41.254 |     self.run_cmd(cfg, options)
+2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 971, in run_cmd
+2026-04-21 17:16:41.254 |     fn(
+2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/command.py", line 483, in upgrade
+2026-04-21 17:16:41.254 |     script.run_env()
+2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/script/base.py", line 545, in run_env
+2026-04-21 17:16:41.254 |     util.load_python_file(self.dir, "env.py")
+2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 116, in load_python_file
+2026-04-21 17:16:41.254 |     module = load_module_py(module_id, path)
+2026-04-21 17:16:41.254 |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 136, in load_module_py
+2026-04-21 17:16:41.254 |     spec.loader.exec_module(module)  # type: ignore
+2026-04-21 17:16:41.254 |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.254 |   File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+2026-04-21 17:16:41.254 |   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2026-04-21 17:16:41.254 |   File "/app/alembic/env.py", line 74, in <module>
+2026-04-21 17:16:41.259 |     run_migrations_online()
+2026-04-21 17:16:41.259 |   File "/app/alembic/env.py", line 68, in run_migrations_online
+2026-04-21 17:16:41.268 |     asyncio.run(run_async_migrations())
+2026-04-21 17:16:41.268 |   File "/usr/local/lib/python3.12/asyncio/runners.py", line 195, in run
+2026-04-21 17:16:41.268 |     return runner.run(main)
+2026-04-21 17:16:41.268 |            ^^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.268 |   File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+2026-04-21 17:16:41.268 |     return self._loop.run_until_complete(task)
+2026-04-21 17:16:41.268 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.268 |   File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+2026-04-21 17:16:41.268 |     return future.result()
+2026-04-21 17:16:41.268 |            ^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.268 |   File "/app/alembic/env.py", line 63, in run_async_migrations
+2026-04-21 17:16:41.304 |     await connection.run_sync(do_run_migrations)
+2026-04-21 17:16:41.304 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py", line 888, in run_sync
+2026-04-21 17:16:41.304 |     return await greenlet_spawn(
+2026-04-21 17:16:41.304 |            ^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.304 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 203, in greenlet_spawn
+2026-04-21 17:16:41.304 |     result = context.switch(value)
+2026-04-21 17:16:41.304 |              ^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.304 |   File "/app/alembic/env.py", line 53, in do_run_migrations
+2026-04-21 17:16:41.332 |     context.run_migrations()
+2026-04-21 17:16:41.332 |   File "<string>", line 8, in run_migrations
+2026-04-21 17:16:41.332 |   File "/usr/local/lib/python3.12/site-packages/alembic/runtime/environment.py", line 969, in run_migrations
+2026-04-21 17:16:41.332 |     self.get_context().run_migrations(**kw)
+2026-04-21 17:16:41.332 |   File "/usr/local/lib/python3.12/site-packages/alembic/runtime/migration.py", line 626, in run_migrations
+2026-04-21 17:16:41.332 |     step.migration_fn(**kw)
+2026-04-21 17:16:41.332 |   File "/app/alembic/versions/026_add_missing_unique_constraints.py", line 57, in upgrade
+2026-04-21 17:16:41.365 |     op.create_unique_constraint(
+2026-04-21 17:16:41.365 |   File "<string>", line 8, in create_unique_constraint
+2026-04-21 17:16:41.365 |   File "<string>", line 3, in create_unique_constraint
+2026-04-21 17:16:41.365 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/ops.py", line 497, in create_unique_constraint
+2026-04-21 17:16:41.365 |     return operations.invoke(op)
+2026-04-21 17:16:41.365 |            ^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.365 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/base.py", line 452, in invoke
+2026-04-21 17:16:41.365 |     return fn(self, operation)
+2026-04-21 17:16:41.365 |            ^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.365 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/toimpl.py", line 222, in create_constraint
+2026-04-21 17:16:41.365 |     operation.to_constraint(operations.migration_context)
+2026-04-21 17:16:41.365 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/ops.py", line 439, in to_constraint
+2026-04-21 17:16:41.366 |     return schema_obj.unique_constraint(
+2026-04-21 17:16:41.366 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.366 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/schemaobj.py", line 132, in unique_constraint
+2026-04-21 17:16:41.366 |     t = sa_schema.Table(
+2026-04-21 17:16:41.366 |         ^^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.366 |   File "<string>", line 2, in __new__
+2026-04-21 17:16:41.366 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/deprecations.py", line 281, in warned
+2026-04-21 17:16:41.366 |     return fn(*args, **kwargs)  # type: ignore[no-any-return]
+2026-04-21 17:16:41.366 |            ^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.366 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/schema.py", line 429, in __new__
+2026-04-21 17:16:41.366 |     return cls._new(*args, **kw)
+2026-04-21 17:16:41.366 |            ^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.366 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/schema.py", line 459, in _new
+2026-04-21 17:16:41.366 |     if key in metadata.tables:
+2026-04-21 17:16:41.366 |        ^^^^^^^^^^^^^^^^^^^^^^
+2026-04-21 17:16:41.366 | TypeError: unhashable type: 'list'

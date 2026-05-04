@@ -37,6 +37,7 @@ const StackedAreaWidget: React.FC<StackedAreaWidgetProps> = ({
     xField: 'date',
     yField: 'cost',
     seriesField: 'name',
+    autoFit: true,
     height: 250,
     smooth: true,
     isStack: true,

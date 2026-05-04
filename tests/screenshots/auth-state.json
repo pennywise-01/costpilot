@@ -1,0 +1,71 @@
+{
+  "cookies": [
+    {
+      "name": "NID",
+      "value": "531=YVXCRzZHsF_BFxoK-GN3UWzRUbBg260X8OhhoP-cIlli4-75RdtId56mHqG9pm7eyqZMq5_WJtVr6INcgkWON5E_J0pXJ-jaG5fuPup23C-H6Z-ardLTWP38ZUasEbyBxixU1aOeMycRHl07y3iOVyj178-jEk82MNxWGTRCLZVb5y38okXKhLfffIVrrjx6gjdpixuflCCLN-u-dg",
+      "domain": ".google.com",
+      "path": "/",
+      "expires": 1793200170.853108,
+      "size": 217,
+      "httpOnly": true,
+      "secure": false,
+      "session": false
+    },
+    {
+      "name": "access_token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjYjgxYzg2OC0zNDFjLTRkMzUtYmIxZC04YTIwMGZjZmVmMGEiLCJzaWQiOiI1OTQxM2RiYzM5MDViN2VjNTRjNTExMDAzZmUyMTVhZWI5OTA0ZWI2OGQ0M2Y0ZWQwZTIxOTdlMWUyMzY3NDgxIiwiZXhwIjoxNzc3Mzg5OTUyfQ.C3Ens1ka7Kw499_5wNRQu3Wsa5zxZziWQd3Ik9TkX3Q",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "expires": 1777389952.357051,
+      "size": 275,
+      "httpOnly": true,
+      "secure": false,
+      "session": false,
+      "sameSite": "Strict"
+    },
+    {
+      "name": "session_id",
+      "value": "ZNYfYU6YXR2ZJmHzif5yrV6F-rhuiUXun11Q8O5t9F0",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "expires": 1777389952.357309,
+      "size": 53,
+      "httpOnly": true,
+      "secure": false,
+      "session": false,
+      "sameSite": "Strict"
+    },
+    {
+      "name": "__Host-csrf-token",
+      "value": "0_HNKo7RWRISaYWlfRD_OUdNXbn8LYM6Q43IlvrZ5eo",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "expires": -1.0,
+      "size": 60,
+      "httpOnly": false,
+      "secure": true,
+      "session": true,
+      "sameSite": "Strict"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://127.0.0.1:5173",
+      "localStorage": [
+        {
+          "name": "costpilot-org",
+          "value": "{\"state\":{\"currentOrg\":{\"id\":\"2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac\",\"name\":\"Luminor\",\"currency\":\"USD\",\"pool_id\":\"9578aa2a-a131-470a-afe7-db89c9fc2977\",\"is_demo\":false,\"disabled\":false,\"created_at\":\"2026-04-09T02:04:31.755641\",\"role\":\"optscale_manager\"},\"organizations\":[{\"id\":\"2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac\",\"name\":\"Luminor\",\"currency\":\"USD\",\"pool_id\":\"9578aa2a-a131-470a-afe7-db89c9fc2977\",\"is_demo\":false,\"disabled\":false,\"created_at\":\"2026-04-09T02:04:31.755641\",\"role\":\"optscale_manager\"}]},\"version\":0}"
+        },
+        {
+          "name": "costpilot-dashboard",
+          "value": "{\"state\":{\"activeDashboardId\":null},\"version\":0}"
+        },
+        {
+          "name": "costpilot-auth",
+          "value": "{\"state\":{\"user\":{\"id\":\"cb81c868-341c-4d35-bb1d-8a200fcfef0a\",\"email\":\"test@test.com\",\"display_name\":\"John Doe\",\"is_active\":true,\"verified\":false,\"role\":\"optscale_member\",\"created_at\":\"2026-04-08T17:05:27.718884\"}},\"version\":0}"
+        }
+      ],
+      "sessionStorage": []
+    }
+  ]
+}

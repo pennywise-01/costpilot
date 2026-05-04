@@ -186,7 +186,7 @@ async def get_user_detail(
     
     # Get preferences
     prefs_result = await db.execute(
-        select(UserPreferences).where(UserPreferences.user_id == user_id)
+        select(UserPreferences).where(UserPreferences.user_id == user_id).limit(1)
     )
     preferences = prefs_result.scalar_one_or_none()
     
@@ -422,7 +422,7 @@ async def create_invitation(
         Role.id == data.role_id,
         Role.organization_id == org_id,
         Role.deleted_at.is_(None)
-    )
+    ).limit(1)
     role_result = await db.execute(role_stmt)
     role = role_result.scalar_one_or_none()
     
@@ -433,7 +433,7 @@ async def create_invitation(
     user_stmt = select(User).where(
         User.email == data.email,
         User.deleted_at.is_(None)
-    )
+    ).limit(1)
     user_result = await db.execute(user_stmt)
     existing_user = user_result.scalar_one_or_none()
     
@@ -443,7 +443,7 @@ async def create_invitation(
             Employee.auth_user_id == existing_user.id,
             Employee.organization_id == org_id,
             Employee.deleted_at.is_(None)
-        )
+        ).limit(1)
         emp_result = await db.execute(emp_stmt)
         if emp_result.scalar_one_or_none():
             raise ConflictError("User is already a member of this organization")
@@ -454,7 +454,7 @@ async def create_invitation(
         UserInvitation.organization_id == org_id,
         UserInvitation.status == InvitationStatus.PENDING,
         UserInvitation.deleted_at.is_(None)
-    )
+    ).limit(1)
     existing_invite_result = await db.execute(existing_invite_stmt)
     existing_invite = existing_invite_result.scalar_one_or_none()
     
@@ -548,6 +548,7 @@ async def get_invitation_by_token(
             selectinload(UserInvitation.inviter),
             selectinload(UserInvitation.role)
         )
+        .limit(1)
     )
     result = await db.execute(stmt)
     invitation = result.scalar_one_or_none()
@@ -584,6 +585,7 @@ async def accept_invitation(
             selectinload(UserInvitation.organization),
             selectinload(UserInvitation.role)
         )
+        .limit(1)
     )
     result = await db.execute(stmt)
     invitation = result.scalar_one_or_none()
@@ -601,7 +603,7 @@ async def accept_invitation(
     user_stmt = select(User).where(
         User.email == invitation.email,
         User.deleted_at.is_(None)
-    )
+    ).limit(1)
     user_result = await db.execute(user_stmt)
     existing_user = user_result.scalar_one_or_none()
     

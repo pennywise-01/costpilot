@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, Enum as SAEnum
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, Enum as SAEnum, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.shared.models import BaseModel, OptimisticLockingMixin
@@ -20,6 +20,13 @@ class NotificationPreference(BaseModel, OptimisticLockingMixin):
         SAEnum(NotificationType, name="notificationtype", values_callable=lambda e: [x.value for x in e]), nullable=False
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "organization_id", "notification_type",
+            name="uq_notification_pref_user_org_type",
+        ),
+    )
 
 
 class NotificationLog(BaseModel):

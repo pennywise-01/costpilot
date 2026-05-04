@@ -18,57 +18,41 @@ from app.resources.schemas import PartialFailure, ResourceDetail, ResourceListRe
 from app.shared.crypto import decrypt
 from app.shared.enums import CloudType
 from app.shared.request_coalescing import coalesce_resource_discovery
+from app.shared.sync_bounded_cache import SyncBoundedCache
 from app.shared.utils.time import utc_now
 
 logger = logging.getLogger(__name__)
 
-# Enhanced in-memory cache for resources with TTL management
-_resource_cache: dict[str, tuple[list[ResourceResponse], float]] = {}
-_resource_detail_cache: dict[str, tuple[ResourceDetail, float]] = {}
+# Bounded LRU caches for resources (max 500 entries each)
+_resource_cache = SyncBoundedCache(max_size=500, ttl_seconds=300, name="resources")
+_resource_detail_cache = SyncBoundedCache(max_size=500, ttl_seconds=300, name="resource_details")
 
 
 def _get_cached_resources(org_id: str) -> list[ResourceResponse] | None:
     """Get cached resources if they exist and haven't expired."""
     if not settings.CLOUD_CACHE_ENABLED:
         return None
-    
-    if org_id in _resource_cache:
-        resources, timestamp = _resource_cache[org_id]
-        ttl = settings.CACHE_TTL_RESOURCES
-        if time.time() - timestamp < ttl:
-            logger.debug(f"Resource cache hit for org {org_id}")
-            return resources
-        # Cache expired, remove it
-        logger.debug(f"Resource cache expired for org {org_id}")
-        del _resource_cache[org_id]
-    return None
+    return _resource_cache.get(org_id)
 
 
 def _set_cached_resources(org_id: str, resources: list[ResourceResponse]) -> None:
     """Cache resources for the organization."""
     if settings.CLOUD_CACHE_ENABLED:
-        _resource_cache[org_id] = (resources, time.time())
-        logger.debug(f"Cached {len(resources)} resources for org {org_id}")
+        _resource_cache.set(org_id, resources, ttl_seconds=settings.CACHE_TTL_RESOURCES)
+        logger.debug("Cached %d resources for org %s", len(resources), org_id)
 
 
 def _get_cached_resource_detail(resource_id: str) -> ResourceDetail | None:
     """Get cached resource detail if not expired."""
     if not settings.CLOUD_CACHE_ENABLED:
         return None
-    
-    if resource_id in _resource_detail_cache:
-        detail, timestamp = _resource_detail_cache[resource_id]
-        if time.time() - timestamp < settings.CACHE_TTL_RESOURCES:
-            logger.debug(f"Resource detail cache hit: {resource_id}")
-            return detail
-        del _resource_detail_cache[resource_id]
-    return None
+    return _resource_detail_cache.get(resource_id)
 
 
 def _set_cached_resource_detail(resource_id: str, detail: ResourceDetail) -> None:
     """Cache resource detail."""
     if settings.CLOUD_CACHE_ENABLED:
-        _resource_detail_cache[resource_id] = (detail, time.time())
+        _resource_detail_cache.set(resource_id, detail, ttl_seconds=settings.CACHE_TTL_RESOURCES)
 
 
 async def _get_cloud_accounts_with_adapters(org_id: str) -> tuple[list[tuple[CloudAccount, AWSAdapter | AzureAdapter | GCPAdapter]], list[PartialFailure]]:
@@ -299,7 +283,7 @@ async def get_resource(
             select(CloudAccount).where(
                 CloudAccount.id == cloud_account_id,
                 CloudAccount.deleted_at.is_(None),
-            )
+            ).limit(1)
         )
         account = result.scalar_one_or_none()
     

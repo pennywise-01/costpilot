@@ -181,6 +181,10 @@ async def lifespan(app: FastAPI):
     # Database schema is managed via Alembic migrations.
     # See docker-compose backend command: "alembic upgrade head" before app startup.
     
+    # Initialize OpenTelemetry tracing
+    from app.shared.tracing import init_tracing
+    init_tracing()
+    
     # Initialize feature flags
     init_feature_flags()
     
@@ -208,6 +212,10 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+# Instrument FastAPI with OpenTelemetry (no-op if OTEL_ENABLED=False)
+from app.shared.tracing import instrument_fastapi_app
+instrument_fastapi_app(app)
 
 app.add_middleware(
     CORSMiddleware,

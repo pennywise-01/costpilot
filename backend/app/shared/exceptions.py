@@ -194,3 +194,25 @@ class DegradationError(AppException):
                 "fallback_error": fallback_error
             }
         )
+
+
+class StaleDataError(HTTPException):
+    """Raised when an optimistic locking version conflict is detected.
+
+    This occurs when two concurrent requests try to update the same entity.
+    The client should re-fetch the latest version and retry.
+    """
+
+    def __init__(
+        self,
+        detail: str = "The resource was modified by another request. Please refresh and try again.",
+        resource_type: Optional[str] = None,
+        resource_id: Optional[str] = None,
+    ):
+        extra_detail = detail
+        if resource_type and resource_id:
+            extra_detail = f"{detail} (resource: {resource_type}/{resource_id})"
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=extra_detail,
+        )

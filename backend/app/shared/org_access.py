@@ -21,7 +21,7 @@ async def verify_org_membership(db: AsyncSession, user_id: str, org_id: str) -> 
             Employee.auth_user_id == user_id,
             Employee.organization_id == org_id,
             Employee.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     if result.scalar_one_or_none() is None:
         raise ForbiddenError("You are not a member of this organization")
@@ -43,7 +43,7 @@ async def get_current_org_member(
             Employee.auth_user_id == current_user.id,
             Employee.organization_id == org_id,
             Employee.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     employee = result.scalar_one_or_none()
     if employee is None:

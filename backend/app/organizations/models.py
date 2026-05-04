@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum as SAEnum, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, Enum as SAEnum, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.shared.enums import RolePurpose
@@ -62,4 +62,11 @@ class Employee(BaseModel, OptimisticLockingMixin):
 
     organization: Mapped["Organization"] = relationship(
         "Organization", back_populates="employees", lazy="selectin"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "auth_user_id", "organization_id",
+            name="uq_employee_user_org",
+        ),
     )

@@ -14,14 +14,15 @@ from app.recommendations.adapters.factory import get_recommender_adapter
 from app.recommendations.schemas import RecommendationType
 from app.shared.crypto import decrypt
 from app.shared.request_coalescing import coalesce_recommendations
+from app.shared.sync_bounded_cache import SyncBoundedCache
 
 logger = logging.getLogger(__name__)
 
 # Cache TTL: Use configuration
 _CACHE_TTL_SECONDS = settings.CACHE_TTL_RECOMMENDATIONS
 
-# In-memory cache for CSP recommendations
-_csp_cache: dict[str, tuple[list[dict], float]] = {}
+# Bounded LRU cache for CSP recommendations (max 200 entries)
+_csp_cache = SyncBoundedCache(max_size=200, ttl_seconds=_CACHE_TTL_SECONDS, name="csp_recommendations")
 
 
 def _get_cached_recommendations(
@@ -30,16 +31,7 @@ def _get_cached_recommendations(
     """Check in-memory cache for recent CSP recommendations."""
     if not settings.CLOUD_CACHE_ENABLED:
         return None
-    
-    if cloud_account_id in _csp_cache:
-        items, timestamp = _csp_cache[cloud_account_id]
-        if time.time() - timestamp < _CACHE_TTL_SECONDS:
-            logger.debug("CSP recommendations memory cache hit for account %s", cloud_account_id)
-            return items
-        # Expired, remove it
-        del _csp_cache[cloud_account_id]
-    
-    return None
+    return _csp_cache.get(cloud_account_id)
 
 
 def _set_cached_recommendations(
@@ -48,7 +40,7 @@ def _set_cached_recommendations(
 ) -> None:
     """Store CSP recommendations in memory cache."""
     if settings.CLOUD_CACHE_ENABLED:
-        _csp_cache[cloud_account_id] = (items, time.time())
+        _csp_cache.set(cloud_account_id, items, ttl_seconds=_CACHE_TTL_SECONDS)
 
 
 async def _get_cached_recommendations_mongo(
@@ -105,27 +97,23 @@ async def clear_recommendations_cache(
     Returns:
         Number of cache entries deleted
     """
-    global _csp_cache
-    
     # Clear MongoDB cache
     collection = mongo_db["csp_recommendations"]
     if cloud_account_id:
         result = await collection.delete_one({"cloud_account_id": cloud_account_id})
-        
+
         # Also clear memory cache
-        if cloud_account_id in _csp_cache:
-            del _csp_cache[cloud_account_id]
-        
+        _csp_cache.delete(cloud_account_id)
+
         logger.info("Cleared recommendations cache for account %s", cloud_account_id)
         return result.deleted_count
     else:
         result = await collection.delete_many({})
-        
+
         # Clear all memory cache
-        count = len(_csp_cache)
-        _csp_cache.clear()
-        
-        logger.info("Cleared all recommendations cache, deleted %d MongoDB entries, %d memory entries", 
+        count = _csp_cache.clear()
+
+        logger.info("Cleared all recommendations cache, deleted %d MongoDB entries, %d memory entries",
                     result.deleted_count, count)
         return result.deleted_count + count
 

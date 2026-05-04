@@ -28,7 +28,11 @@ STAT_CARD_RESOURCE_METRICS = {"resource_count"}
 BREAKDOWN_METRICS = {
     "cost_trend", "cost_by_cloud", "cost_by_service", "cost_by_region",
     "cloud_distribution", "service_distribution", "cost_trend_by_cloud",
+    "cost_by_tag",
 }
+
+BUDGET_METRICS = {"budget_vs_spend"}
+TREND_COMPARISON_METRICS = {"cost_comparison_by_cloud", "cost_comparison_by_service"}
 
 RESOURCE_METRICS = {"top_resources"}
 RECOMMENDATION_METRICS = {"recommendations", "recommendation_categories"}
@@ -57,6 +61,11 @@ def _group_by_data_source(widgets: list[WidgetDataRequest]) -> dict[str, list[Wi
             groups["recommendations_overview"].append(w)
         elif metric in POOL_METRICS:
             groups["pools"].append(w)
+        elif metric in BUDGET_METRICS:
+            groups["budget"].append(w)
+        elif metric in TREND_COMPARISON_METRICS:
+            group_by = w.params.get("groupBy", w.params.get("group_by", "cloud"))
+            groups[f"expense_breakdown:{group_by}"].append(w)
         else:
             groups[f"unknown:{metric}"].append(w)
     return groups
@@ -91,7 +100,7 @@ async def _fetch_recommendations_overview(db: AsyncSession, org_id: str) -> dict
     from app.database import get_mongo_db
     from app.recommendations.service import get_recommendations_overview
     mongo_db = get_mongo_db()
-    result = await get_recommendations_overview(mongo_db, org_id)
+    result = await get_recommendations_overview(mongo_db, org_id, db=db)
     return result.model_dump()
 
 
@@ -143,6 +152,36 @@ async def _fetch_pools(db: AsyncSession, org_id: str) -> dict:
     }
 
 
+async def _fetch_budget(db: AsyncSession, org_id: str) -> dict:
+    from sqlalchemy import select
+    from app.cost_cache.service import get_cached_summary
+    from app.organizations.models import Organization
+    from app.pools.models import Pool
+
+    # Get budget from org's root pool
+    org_result = await db.execute(
+        select(Organization).where(Organization.id == org_id)
+    )
+    org = org_result.scalar_one_or_none()
+    budget = 0.0
+    if org and org.pool_id:
+        pool_result = await db.execute(
+            select(Pool).where(Pool.id == org.pool_id)
+        )
+        pool = pool_result.scalar_one_or_none()
+        if pool:
+            budget = float(pool.limit)
+
+    # Get current spend from cache
+    summary = await get_cached_summary(db, org_id, allow_stale=True)
+    return {
+        "budget": budget,
+        "spent": summary.this_month_total,
+        "forecast": summary.this_month_forecast,
+        "data_source": summary.data_source,
+    }
+
+
 # --- Metric → response mapping ---
 
 def _map_summary_to_metric(metric: str, summary_data: dict) -> dict:
@@ -168,12 +207,17 @@ def _map_breakdown_to_metric(metric: str, breakdown_data: dict) -> dict:
             "breakdown": breakdown_data.get("breakdown", []),
             "data_source": breakdown_data.get("data_source", "cache"),
         }
-    elif metric in ("cost_by_cloud", "cost_by_service", "cost_by_region"):
+    elif metric in ("cost_by_cloud", "cost_by_service", "cost_by_region", "cost_by_tag"):
         return {
             "breakdown": breakdown_data.get("breakdown", []),
             "data_source": breakdown_data.get("data_source", "cache"),
         }
     elif metric in ("cloud_distribution", "service_distribution"):
+        return {
+            "breakdown": breakdown_data.get("breakdown", []),
+            "data_source": breakdown_data.get("data_source", "cache"),
+        }
+    elif metric in ("cost_comparison_by_cloud", "cost_comparison_by_service"):
         return {
             "breakdown": breakdown_data.get("breakdown", []),
             "data_source": breakdown_data.get("data_source", "cache"),
@@ -227,6 +271,17 @@ def _map_pools_to_metric(metric: str, pool_data: dict) -> dict:
     return {"data_source": "unknown"}
 
 
+def _map_budget_to_metric(metric: str, budget_data: dict) -> dict:
+    if metric == "budget_vs_spend":
+        return {
+            "budget": budget_data.get("budget", 0),
+            "spent": budget_data.get("spent", 0),
+            "forecast": budget_data.get("forecast", 0),
+            "data_source": budget_data.get("data_source", "cache"),
+        }
+    return {"data_source": "unknown"}
+
+
 # --- Main batch handler ---
 
 async def fetch_batch_widget_data(
@@ -255,6 +310,8 @@ async def fetch_batch_widget_data(
             fetch_tasks[source_key] = _fetch_cloud_accounts(db, org_id)
         elif source_key == "pools":
             fetch_tasks[source_key] = _fetch_pools(db, org_id)
+        elif source_key == "budget":
+            fetch_tasks[source_key] = _fetch_budget(db, org_id)
 
     # Execute in parallel with return_exceptions=True for partial failure tolerance
     source_keys = list(fetch_tasks.keys())
@@ -298,6 +355,8 @@ async def fetch_batch_widget_data(
                     data[metric] = _map_cloud_accounts_to_metric(metric, raw)
                 elif source_key == "pools":
                     data[metric] = _map_pools_to_metric(metric, raw)
+                elif source_key == "budget":
+                    data[metric] = _map_budget_to_metric(metric, raw)
                 else:
                     errors[metric] = f"Unknown data source: {source_key}"
             except Exception as e:

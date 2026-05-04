@@ -448,6 +448,12 @@ class AzureAdapter(CloudAdapter):
         
         Returns list of {date, cost, [group_key]} dicts.
         """
+        # Azure Cost Management requires a specific tag key name for grouping,
+        # not just "TagKey". Return empty list for tag grouping.
+        if group_by and group_by.upper() == "TAG":
+            logger.debug("Azure: skipping TAG group_by (requires specific tag key)")
+            return []
+
         group_dims = [self._map_group_dimension(group_by)] if group_by else None
         
         try:
@@ -469,6 +475,7 @@ class AzureAdapter(CloudAdapter):
             "SERVICE": "ServiceName",
             "REGION": "ResourceLocation",
             "RESOURCE_GROUP": "ResourceGroup",
+            "TAG": "TagKey",
         }
         return mapping.get(group_by.upper(), group_by) if group_by else "ServiceName"
 

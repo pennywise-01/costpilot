@@ -10,6 +10,9 @@ import {
   TableOutlined,
   UnorderedListOutlined,
   HeartOutlined,
+  DashboardOutlined,
+  SwapOutlined,
+  TagsOutlined,
 } from '@ant-design/icons';
 
 export interface WidgetDefinition {
@@ -107,6 +110,36 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     dataKeys: ['cloud_account_health'],
     editableFields: ['metric', 'title'],
   },
+  budget_gauge: {
+    type: 'budget_gauge',
+    label: 'Budget Gauge',
+    icon: <DashboardOutlined />,
+    component: lazy(() => import('./widgets/BudgetGaugeWidget')),
+    minW: 3, minH: 3, defaultW: 4, defaultH: 5,
+    defaultConfig: { metric: 'budget_vs_spend' },
+    dataKeys: ['budget_vs_spend'],
+    editableFields: ['metric', 'title'],
+  },
+  trend_comparison: {
+    type: 'trend_comparison',
+    label: 'Trend Comparison',
+    icon: <SwapOutlined />,
+    component: lazy(() => import('./widgets/TrendComparisonWidget')),
+    minW: 4, minH: 4, defaultW: 6, defaultH: 6,
+    defaultConfig: { metric: 'cost_comparison_by_cloud', groupBy: 'cloud' },
+    dataKeys: ['cost_comparison_by_cloud', 'cost_comparison_by_service'],
+    editableFields: ['metric', 'title', 'groupBy'],
+  },
+  tag_breakdown: {
+    type: 'tag_breakdown',
+    label: 'Tag Breakdown',
+    icon: <TagsOutlined />,
+    component: lazy(() => import('./widgets/TagBreakdownWidget')),
+    minW: 4, minH: 4, defaultW: 6, defaultH: 6,
+    defaultConfig: { metric: 'cost_by_tag' },
+    dataKeys: ['cost_by_tag'],
+    editableFields: ['metric', 'title'],
+  },
 };
 
 // Metric options per widget type for the config drawer
@@ -147,6 +180,16 @@ export const METRIC_OPTIONS_BY_TYPE: Record<string, { value: string; label: stri
   ],
   status_list: [
     { value: 'cloud_account_health', label: 'Cloud Account Health' },
+  ],
+  budget_gauge: [
+    { value: 'budget_vs_spend', label: 'Budget vs Spend' },
+  ],
+  trend_comparison: [
+    { value: 'cost_comparison_by_cloud', label: 'Cost Comparison by Cloud' },
+    { value: 'cost_comparison_by_service', label: 'Cost Comparison by Service' },
+  ],
+  tag_breakdown: [
+    { value: 'cost_by_tag', label: 'Cost by Tag' },
   ],
 };
 

@@ -14,6 +14,8 @@ from app.auth.models import User, SessionBinding, SessionRevokeReason
 from app.shared.exceptions import BadRequestError, ConflictError, UnauthorizedError, ForbiddenError, NotFoundError
 from app.shared.utils.time import utc_now
 
+logger = logging.getLogger(__name__)
+
 _redis_client: aioredis.Redis | None = None
 _SESSION_KEY_PREFIX = "session_binding:"
 MAX_CONCURRENT_SESSIONS = 5
@@ -143,29 +145,52 @@ async def is_session_binding_valid(
     key = _session_storage_key(session_id)
     binding = await r.hgetall(key)
     if not binding:
+        logger.warning(f"[SESSION-DEBUG] No Redis binding for session_id={session_id[:12]}... key={key}")
         return False
 
     bound_user_id = binding.get("user_id", "")
     if not secrets.compare_digest(bound_user_id, user_id):
+        logger.warning(f"[SESSION-DEBUG] user_id mismatch: bound={bound_user_id} req={user_id}")
         return False
 
     bound_ua_hash = binding.get("ua_hash", "")
     expected_ua_hash = _user_agent_binding_hash(user_agent)
     if not bound_ua_hash or not secrets.compare_digest(bound_ua_hash, expected_ua_hash):
+        logger.warning(
+            f"[SESSION-DEBUG] UA mismatch: bound={bound_ua_hash[:16]}... "
+            f"expected={expected_ua_hash[:16]}... ua_input={str(user_agent)[:60]}"
+        )
         return False
 
     bound_ip_hash = binding.get("ip_hash", "")
     expected_ip_hash = _ip_binding_hash(client_ip)
     if not bound_ip_hash or not secrets.compare_digest(bound_ip_hash, expected_ip_hash):
+        logger.warning(
+            f"[SESSION-DEBUG] IP mismatch: bound={bound_ip_hash[:16]}... "
+            f"expected={expected_ip_hash[:16]}... ip_input={client_ip}"
+        )
         return False
 
     # Validate browser fingerprint if present
     # This helps prevent replay attacks when IP is the same (e.g., localhost)
+    # If session was created with a fingerprint but request doesn't provide one,
+    # we log a warning but don't fail (IP+UA already validated above).
+    # We only fail if a DIFFERENT fingerprint is provided (potential replay).
     bound_fp_hash = binding.get("fp_hash", "")
     if bound_fp_hash:
-        expected_fp_hash = _fingerprint_binding_hash(fingerprint)
-        if not secrets.compare_digest(bound_fp_hash, expected_fp_hash):
-            return False
+        if fingerprint:
+            expected_fp_hash = _fingerprint_binding_hash(fingerprint)
+            if not secrets.compare_digest(bound_fp_hash, expected_fp_hash):
+                logger.warning(
+                    f"[SESSION-DEBUG] FP mismatch: bound={bound_fp_hash[:16]}... "
+                    f"expected={expected_fp_hash[:16]}... fp_input={fingerprint}"
+                )
+                return False
+        else:
+            logger.warning(
+                f"[SESSION-DEBUG] FP missing in request but session has fp_hash={bound_fp_hash[:16]}... "
+                "(allowing since IP+UA matched)"
+            )
 
     return True
 

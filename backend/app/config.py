@@ -178,6 +178,10 @@ class Settings(BaseSettings):
     DASHBOARD_BATCH_RATE_LIMIT: int = 20
     DASHBOARD_BATCH_CACHE_TTL: int = 300
 
+    # OpenTelemetry Distributed Tracing
+    OTEL_ENABLED: bool = False  # Enable OpenTelemetry tracing
+    OTEL_EXPORTER_OTLP_ENDPOINT: str = ""  # e.g. "http://localhost:4317"
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 

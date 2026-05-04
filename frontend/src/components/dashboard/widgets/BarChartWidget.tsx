@@ -30,6 +30,7 @@ const BarChartWidget: React.FC<BarChartWidgetProps> = ({
     data: chartData,
     xField: 'name',
     yField: 'total',
+    autoFit: true,
     height: 250,
     color: '#1677ff',
     label: {

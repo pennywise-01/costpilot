@@ -21,6 +21,8 @@ export interface RecRuleResponse {
   saving_value: number;
   conditions: RecRuleCondition[];
   created_at: string;
+  is_builtin?: boolean;
+  data_source?: string;
 }
 
 export interface RecRuleCreate {

@@ -57,5 +57,7 @@ class RecRuleResponse(BaseModel):
     saving_value: float
     conditions: list[RecRuleConditionResponse]
     created_at: datetime
+    is_builtin: bool = False
+    data_source: str = "billing"
 
     model_config = {"from_attributes": True}

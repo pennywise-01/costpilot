@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,3 +25,15 @@ class Dashboard(BaseModel, OptimisticLockingMixin):
     updated_by: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=False
     )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "slug",
+            name="uq_dashboard_org_slug",
+        ),
+    )
+
+    @property
+    def version(self) -> int:
+        """Alias for version_id to match DashboardDetail schema."""
+        return self.version_id

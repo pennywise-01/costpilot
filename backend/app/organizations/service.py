@@ -160,7 +160,7 @@ async def invite_employee(
     await get_organization(db, org_id)
 
     result = await db.execute(
-        select(User).where(User.email == email, User.deleted_at.is_(None))
+        select(User).where(User.email == email, User.deleted_at.is_(None)).limit(1)
     )
     user = result.scalar_one_or_none()
     if not user:
@@ -171,7 +171,7 @@ async def invite_employee(
             Employee.organization_id == org_id,
             Employee.auth_user_id == user.id,
             Employee.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     if result.scalar_one_or_none():
         raise ConflictError("User is already an employee of this organization")

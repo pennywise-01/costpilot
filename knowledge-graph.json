@@ -1,0 +1,372 @@
+{
+  "project": "CostPilot Knowledge Graph",
+  "generated": "2026-04-28",
+  "stats": {
+    "entities": 42,
+    "relations": 82,
+    "entityTypes": ["Project", "Application", "Infrastructure", "BackendModule", "FrontendModule", "Component", "Database", "TestSuite", "Documentation"]
+  },
+  "entities": [
+    {
+      "name": "CostPilot",
+      "type": "Project",
+      "observations": [
+        "Cloud Cost Optimization Platform",
+        "Full-stack application with Python/FastAPI backend and React/TypeScript frontend",
+        "Version 0.1.0",
+        "Supports AWS, Azure, and GCP cloud providers",
+        "Uses PostgreSQL (primary), MongoDB (document store), and Redis (caching) databases",
+        "Deployed via Docker Compose with 5 services: backend, frontend, postgres, mongodb, redis",
+        "Backend runs on port 8000, frontend on port 5173",
+        "Uses Alembic for database migrations",
+        "Has comprehensive security: rate limiting, input validation, encryption, RBAC, audit logging",
+        "Has scheduler system for automated tasks",
+        "Has recommendation engine with cloud-provider-specific adapters"
+      ]
+    },
+    {
+      "name": "Backend",
+      "type": "Application",
+      "observations": [
+        "Python 3.12+ FastAPI application",
+        "Package name: costpilot-backend",
+        "Uses SQLAlchemy (async) with asyncpg for PostgreSQL",
+        "Uses Motor/PyMongo for MongoDB",
+        "Uses Redis for caching and session management",
+        "Uses Pydantic v2 for data validation",
+        "Uses python-jose for JWT authentication",
+        "Uses passlib with bcrypt for password hashing",
+        "Uses cryptography (Fernet) for field encryption",
+        "Uses APScheduler for task scheduling",
+        "Uses httpx for async HTTP requests",
+        "Uses boto3 for AWS SDK",
+        "Uses pandas for data processing",
+        "Uses prometheus-client for metrics",
+        "Uses cachetools for in-memory caching",
+        "Uses aiosmtplib for async email sending",
+        "Entry point: app/main.py",
+        "Configured via pydantic-settings in app/config.py"
+      ]
+    },
+    {
+      "name": "Frontend",
+      "type": "Application",
+      "observations": [
+        "React 18 with TypeScript",
+        "Package name: costpilot-frontend",
+        "Uses Vite as build tool with SWC plugin",
+        "Uses Ant Design (antd) v5 as UI component library",
+        "Uses TanStack React Query v5 for server state management",
+        "Uses Zustand v5 for client state management",
+        "Uses React Router DOM v6 for routing",
+        "Uses Axios for HTTP requests",
+        "Lazy loads all page components for code splitting",
+        "Entry point: src/main.tsx, main app: src/App.tsx"
+      ]
+    },
+    {
+      "name": "Infrastructure",
+      "type": "Infrastructure",
+      "observations": [
+        "Docker Compose orchestration with 5 services",
+        "PostgreSQL 16 Alpine as primary relational database",
+        "MongoDB 7 as document store",
+        "Redis 7 Alpine for caching, sessions, and rate limiting",
+        "Backend Dockerfile at backend/Dockerfile",
+        "Frontend Dockerfile at frontend/Dockerfile with nginx",
+        "Persistent volumes for postgres_data, mongodb_data, redis_data"
+      ]
+    },
+    {
+      "name": "AuthModule",
+      "type": "BackendModule",
+      "observations": ["JWT-based auth with access/refresh tokens", "Session security with replay protection", "Rate limiting on auth endpoints"]
+    },
+    {
+      "name": "OrganizationsModule",
+      "type": "BackendModule",
+      "observations": ["Multi-tenant organization management", "Models: Organization, Employee"]
+    },
+    {
+      "name": "CloudAccountsModule",
+      "type": "BackendModule",
+      "observations": ["Manages AWS/Azure/GCP account connections", "Encrypted credential storage", "Credential and cloud account caching"]
+    },
+    {
+      "name": "ExpensesModule",
+      "type": "BackendModule",
+      "observations": ["Cloud cost tracking and aggregation", "Fetches costs from all cloud providers"]
+    },
+    {
+      "name": "ResourcesModule",
+      "type": "BackendModule",
+      "observations": ["Cloud resource discovery across all regions", "Resource detail views"]
+    },
+    {
+      "name": "RecommendationsModule",
+      "type": "BackendModule",
+      "observations": ["Cost optimization recommendations engine", "Adapter pattern for AWS/Azure/GCP", "CSP service for cross-provider logic"]
+    },
+    {
+      "name": "PoolsModule",
+      "type": "BackendModule",
+      "observations": ["Resource pool management", "Models: Pool, PoolPolicy"]
+    },
+    {
+      "name": "RulesModule",
+      "type": "BackendModule",
+      "observations": ["Cost optimization rules engine", "Models: Rule, Condition"]
+    },
+    {
+      "name": "RecommendationRulesModule",
+      "type": "BackendModule",
+      "observations": ["Recommendation-specific rules", "Models: RecommendationRule, RecommendationRuleCondition"]
+    },
+    {
+      "name": "SchedulerModule",
+      "type": "BackendModule",
+      "observations": ["Automated task scheduling with APScheduler", "Models: SchedulerConfig, SchedulerRun, SchedulerLog"]
+    },
+    {
+      "name": "DashboardsModule",
+      "type": "BackendModule",
+      "observations": ["Customizable widget-based dashboards", "Batch operations and seed data"]
+    },
+    {
+      "name": "NotificationsModule",
+      "type": "BackendModule",
+      "observations": ["Email via SMTP/AWS SES/SendGrid", "Models: NotificationPreference, NotificationLog"]
+    },
+    {
+      "name": "UserManagementModule",
+      "type": "BackendModule",
+      "observations": ["User invitations and activity logging", "Models: UserInvitation, UserActivityLog, UserPreferences"]
+    },
+    {
+      "name": "EnterpriseModule",
+      "type": "BackendModule",
+      "observations": ["RBAC: Role, RolePermission, UserRoleAssignment, ABACPolicy, SSOConfig", "Export: ExportTemplate, ExportJob, ScheduledExport"]
+    },
+    {
+      "name": "SecurityModule",
+      "type": "BackendModule",
+      "observations": ["Audit logging and security alerts", "Models: AuditLog, SecurityAlert"]
+    },
+    {
+      "name": "MiddlewareModule",
+      "type": "BackendModule",
+      "observations": ["Rate limiting, input validation, timeout, idempotency, exception handling"]
+    },
+    {
+      "name": "MetricsModule",
+      "type": "BackendModule",
+      "observations": ["Prometheus metrics collection and /metrics endpoint"]
+    },
+    {
+      "name": "HealthModule",
+      "type": "BackendModule",
+      "observations": ["Health check system with registry"]
+    },
+    {
+      "name": "SharedModule",
+      "type": "BackendModule",
+      "observations": ["Circuit breaker, retry, bounded cache, request coalescing", "Feature flags, field encryption, key rotation", "Structured logging, org-scoped access, base service class"]
+    },
+    {
+      "name": "IdempotencyModule",
+      "type": "BackendModule",
+      "observations": ["Idempotency key management", "Model: IdempotencyKey"]
+    },
+    {
+      "name": "CostCacheModule",
+      "type": "BackendModule",
+      "observations": ["Cost data caching layer"]
+    },
+    {
+      "name": "FrontendApiLayer",
+      "type": "FrontendModule",
+      "observations": ["16 Axios-based API modules", "client.ts is the base API client"]
+    },
+    {
+      "name": "FrontendPages",
+      "type": "FrontendModule",
+      "observations": ["20+ lazy-loaded page components", "Auth, main, and error pages"]
+    },
+    {
+      "name": "FrontendComponents",
+      "type": "FrontendModule",
+      "observations": ["Dashboard, Scheduler, User reusable components", "Widget registry for dynamic configuration"]
+    },
+    {
+      "name": "FrontendStore",
+      "type": "FrontendModule",
+      "observations": ["4 Zustand stores: auth, org, user, dashboard"]
+    },
+    {
+      "name": "FrontendHooks",
+      "type": "FrontendModule",
+      "observations": ["useCurrentOrgId, useDashboardData, useSessionValidator"]
+    },
+    {
+      "name": "FrontendLayouts",
+      "type": "FrontendModule",
+      "observations": ["AppLayout for authenticated users, AuthLayout for login/register"]
+    },
+    {
+      "name": "FrontendTypes",
+      "type": "FrontendModule",
+      "observations": ["TypeScript type definitions"]
+    },
+    {
+      "name": "FrontendUtils",
+      "type": "FrontendModule",
+      "observations": ["Constants, formatters, routes, fingerprinting"]
+    },
+    {
+      "name": "AWSAdapter",
+      "type": "Component",
+      "observations": ["AWS cloud provider adapter", "Uses boto3"]
+    },
+    {
+      "name": "AzureAdapter",
+      "type": "Component",
+      "observations": ["Azure cloud provider adapter", "Uses azure-mgmt-* SDKs"]
+    },
+    {
+      "name": "GCPAdapter",
+      "type": "Component",
+      "observations": ["GCP cloud provider adapter", "Uses google-cloud-* SDKs"]
+    },
+    {
+      "name": "AdapterFactory",
+      "type": "Component",
+      "observations": ["Factory pattern for creating cloud provider adapters"]
+    },
+    {
+      "name": "BaseAdapter",
+      "type": "Component",
+      "observations": ["Abstract base class for cloud provider adapters"]
+    },
+    {
+      "name": "PostgreSQL",
+      "type": "Database",
+      "observations": ["PostgreSQL 16 Alpine", "Async via SQLAlchemy + asyncpg", "Connection pooling: 20 base + 40 overflow"]
+    },
+    {
+      "name": "MongoDB",
+      "type": "Database",
+      "observations": ["MongoDB 7", "Async via Motor", "Connection pooling: 50 max, 10 min"]
+    },
+    {
+      "name": "Redis",
+      "type": "Database",
+      "observations": ["Redis 7 Alpine", "Caching, sessions, rate limiting", "Max 100 connections"]
+    },
+    {
+      "name": "AlembicMigrations",
+      "type": "Component",
+      "observations": ["PostgreSQL schema migrations", "Runs on startup before uvicorn"]
+    },
+    {
+      "name": "NginxConfig",
+      "type": "Component",
+      "observations": ["Frontend web server", "Serves React app, proxies API to backend"]
+    },
+    {
+      "name": "BackendTests",
+      "type": "TestSuite",
+      "observations": ["30+ test files", "pytest with fixtures and factories"]
+    },
+    {
+      "name": "Plans",
+      "type": "Documentation",
+      "observations": ["Implementation plans for AWS, GCP, security, reliability, dashboards, scheduler"]
+    }
+  ],
+  "relations": [
+    {"from": "CostPilot", "to": "Backend", "type": "contains"},
+    {"from": "CostPilot", "to": "Frontend", "type": "contains"},
+    {"from": "CostPilot", "to": "Infrastructure", "type": "deployed_on"},
+    {"from": "CostPilot", "to": "Plans", "type": "documented_by"},
+    {"from": "Backend", "to": "PostgreSQL", "type": "uses"},
+    {"from": "Backend", "to": "MongoDB", "type": "uses"},
+    {"from": "Backend", "to": "Redis", "type": "uses"},
+    {"from": "Backend", "to": "AuthModule", "type": "contains"},
+    {"from": "Backend", "to": "OrganizationsModule", "type": "contains"},
+    {"from": "Backend", "to": "CloudAccountsModule", "type": "contains"},
+    {"from": "Backend", "to": "ExpensesModule", "type": "contains"},
+    {"from": "Backend", "to": "ResourcesModule", "type": "contains"},
+    {"from": "Backend", "to": "RecommendationsModule", "type": "contains"},
+    {"from": "Backend", "to": "PoolsModule", "type": "contains"},
+    {"from": "Backend", "to": "RulesModule", "type": "contains"},
+    {"from": "Backend", "to": "RecommendationRulesModule", "type": "contains"},
+    {"from": "Backend", "to": "SchedulerModule", "type": "contains"},
+    {"from": "Backend", "to": "DashboardsModule", "type": "contains"},
+    {"from": "Backend", "to": "NotificationsModule", "type": "contains"},
+    {"from": "Backend", "to": "UserManagementModule", "type": "contains"},
+    {"from": "Backend", "to": "EnterpriseModule", "type": "contains"},
+    {"from": "Backend", "to": "SecurityModule", "type": "contains"},
+    {"from": "Backend", "to": "MiddlewareModule", "type": "contains"},
+    {"from": "Backend", "to": "MetricsModule", "type": "contains"},
+    {"from": "Backend", "to": "HealthModule", "type": "contains"},
+    {"from": "Backend", "to": "SharedModule", "type": "contains"},
+    {"from": "Backend", "to": "IdempotencyModule", "type": "contains"},
+    {"from": "Backend", "to": "CostCacheModule", "type": "contains"},
+    {"from": "Backend", "to": "BackendTests", "type": "tested_by"},
+    {"from": "Backend", "to": "AlembicMigrations", "type": "uses"},
+    {"from": "Frontend", "to": "FrontendApiLayer", "type": "contains"},
+    {"from": "Frontend", "to": "FrontendPages", "type": "contains"},
+    {"from": "Frontend", "to": "FrontendComponents", "type": "contains"},
+    {"from": "Frontend", "to": "FrontendStore", "type": "contains"},
+    {"from": "Frontend", "to": "FrontendHooks", "type": "contains"},
+    {"from": "Frontend", "to": "FrontendLayouts", "type": "contains"},
+    {"from": "Frontend", "to": "FrontendTypes", "type": "contains"},
+    {"from": "Frontend", "to": "FrontendUtils", "type": "contains"},
+    {"from": "Frontend", "to": "NginxConfig", "type": "served_by"},
+    {"from": "FrontendApiLayer", "to": "Backend", "type": "communicates_with"},
+    {"from": "Infrastructure", "to": "PostgreSQL", "type": "hosts"},
+    {"from": "Infrastructure", "to": "MongoDB", "type": "hosts"},
+    {"from": "Infrastructure", "to": "Redis", "type": "hosts"},
+    {"from": "RecommendationsModule", "to": "AdapterFactory", "type": "uses"},
+    {"from": "AdapterFactory", "to": "AWSAdapter", "type": "creates"},
+    {"from": "AdapterFactory", "to": "AzureAdapter", "type": "creates"},
+    {"from": "AdapterFactory", "to": "GCPAdapter", "type": "creates"},
+    {"from": "AWSAdapter", "to": "BaseAdapter", "type": "implements"},
+    {"from": "AzureAdapter", "to": "BaseAdapter", "type": "implements"},
+    {"from": "GCPAdapter", "to": "BaseAdapter", "type": "implements"},
+    {"from": "CloudAccountsModule", "to": "AWSAdapter", "type": "provides_credentials_to"},
+    {"from": "CloudAccountsModule", "to": "AzureAdapter", "type": "provides_credentials_to"},
+    {"from": "CloudAccountsModule", "to": "GCPAdapter", "type": "provides_credentials_to"},
+    {"from": "ExpensesModule", "to": "CloudAccountsModule", "type": "depends_on"},
+    {"from": "ResourcesModule", "to": "CloudAccountsModule", "type": "depends_on"},
+    {"from": "RecommendationsModule", "to": "CloudAccountsModule", "type": "depends_on"},
+    {"from": "AuthModule", "to": "Redis", "type": "uses"},
+    {"from": "AuthModule", "to": "PostgreSQL", "type": "uses"},
+    {"from": "MiddlewareModule", "to": "Redis", "type": "uses"},
+    {"from": "CostCacheModule", "to": "Redis", "type": "uses"},
+    {"from": "SchedulerModule", "to": "PostgreSQL", "type": "uses"},
+    {"from": "SchedulerModule", "to": "MongoDB", "type": "uses"},
+    {"from": "SecurityModule", "to": "MongoDB", "type": "uses"},
+    {"from": "NotificationsModule", "to": "UserManagementModule", "type": "sends_emails_for"},
+    {"from": "EnterpriseModule", "to": "AuthModule", "type": "extends"},
+    {"from": "UserManagementModule", "to": "OrganizationsModule", "type": "belongs_to"},
+    {"from": "PoolsModule", "to": "OrganizationsModule", "type": "scoped_to"},
+    {"from": "RulesModule", "to": "PoolsModule", "type": "applies_to"},
+    {"from": "RecommendationRulesModule", "to": "RecommendationsModule", "type": "configures"},
+    {"from": "DashboardsModule", "to": "ExpensesModule", "type": "visualizes"},
+    {"from": "DashboardsModule", "to": "ResourcesModule", "type": "visualizes"},
+    {"from": "DashboardsModule", "to": "RecommendationsModule", "type": "visualizes"},
+    {"from": "SharedModule", "to": "AuthModule", "type": "provides_base_for"},
+    {"from": "SharedModule", "to": "OrganizationsModule", "type": "provides_base_for"},
+    {"from": "SharedModule", "to": "CloudAccountsModule", "type": "provides_base_for"},
+    {"from": "SharedModule", "to": "PoolsModule", "type": "provides_base_for"},
+    {"from": "SharedModule", "to": "RulesModule", "type": "provides_base_for"},
+    {"from": "SharedModule", "to": "DashboardsModule", "type": "provides_base_for"},
+    {"from": "AlembicMigrations", "to": "PostgreSQL", "type": "migrates"},
+    {"from": "FrontendStore", "to": "FrontendPages", "type": "provides_state_to"},
+    {"from": "FrontendHooks", "to": "FrontendStore", "type": "reads_from"},
+    {"from": "FrontendHooks", "to": "FrontendApiLayer", "type": "calls"},
+    {"from": "FrontendComponents", "to": "FrontendPages", "type": "used_by"},
+    {"from": "FrontendLayouts", "to": "FrontendPages", "type": "wraps"}
+  ]
+}

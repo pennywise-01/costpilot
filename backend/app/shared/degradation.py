@@ -211,9 +211,13 @@ def _compute_freshness_seconds(cached_at: Any) -> int:
         return -1
     try:
         if isinstance(cached_at, str):
-            from datetime import datetime
+            from datetime import datetime, timezone
             cached_at = datetime.fromisoformat(cached_at.replace("Z", "+00:00"))
         if hasattr(cached_at, "timestamp"):
+            # Ensure timezone-aware for subtraction with utc_now()
+            if cached_at.tzinfo is None:
+                from datetime import timezone
+                cached_at = cached_at.replace(tzinfo=timezone.utc)
             return int((utc_now() - cached_at).total_seconds())
     except Exception:
         pass

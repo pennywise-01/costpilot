@@ -6,6 +6,11 @@ from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.organizations.models import Employee
 from app.enterprise.modules.rbac.dependencies import ensure_org_permission, require_org_permission
+from app.recommendation_rules.builtin_rules import (
+    get_builtin_rule_by_id,
+    get_builtin_rule_responses,
+    is_builtin_rule_id,
+)
 from app.recommendation_rules.schemas import RecRuleCreate, RecRuleUpdate, RecRuleResponse
 from app.recommendation_rules.service import (
     create_rec_rule,
@@ -15,6 +20,7 @@ from app.recommendation_rules.service import (
     delete_rec_rule,
 )
 from app.shared.enums import PermissionAction, RBACResourceType
+from app.shared.exceptions import BadRequestError, NotFoundError
 from app.shared.org_access import get_current_org_member, verify_org_membership
 
 router = APIRouter()
@@ -47,7 +53,9 @@ async def list_rec_rules_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     rules = await list_rec_rules(db, org_id)
-    return [RecRuleResponse.model_validate(r) for r in rules]
+    custom = [RecRuleResponse.model_validate(r) for r in rules]
+    # Built-in Well-Architected rules always appear first, read-only.
+    return get_builtin_rule_responses() + custom
 
 
 @router.get("/recommendation-rules/{rule_id}", response_model=RecRuleResponse)
@@ -56,6 +64,11 @@ async def get_rec_rule_endpoint(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if is_builtin_rule_id(rule_id):
+        builtin = get_builtin_rule_by_id(rule_id)
+        if builtin is None:
+            raise NotFoundError("Recommendation rule not found")
+        return builtin
     rule = await get_rec_rule(db, rule_id)
     await verify_org_membership(db, current_user.id, rule.organization_id)
     await ensure_org_permission(
@@ -75,6 +88,8 @@ async def update_rec_rule_endpoint(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if is_builtin_rule_id(rule_id):
+        raise BadRequestError("Built-in rules are read-only and cannot be modified")
     rule = await get_rec_rule(db, rule_id)
     await verify_org_membership(db, current_user.id, rule.organization_id)
     await ensure_org_permission(
@@ -94,6 +109,8 @@ async def delete_rec_rule_endpoint(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if is_builtin_rule_id(rule_id):
+        raise BadRequestError("Built-in rules are read-only and cannot be deleted")
     rule = await get_rec_rule(db, rule_id)
     await verify_org_membership(db, current_user.id, rule.organization_id)
     await ensure_org_permission(

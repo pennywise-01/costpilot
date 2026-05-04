@@ -565,6 +565,12 @@ class GCPAdapter(CloudAdapter):
 
         Returns list of {date, cost, [group_key]} dicts.
         """
+        # GCP labels grouping requires a specific label key path.
+        # Return empty list for generic tag grouping.
+        if group_by and group_by.upper() == "TAG":
+            logger.debug("GCP: skipping TAG group_by (requires specific label key)")
+            return []
+
         group_dims = [self._map_group_dimension(group_by)] if group_by else None
 
         try:
@@ -588,6 +594,7 @@ class GCPAdapter(CloudAdapter):
             "REGION": "location",
             "LOCATION": "location",
             "RESOURCE": "resource",
+            "TAG": "labels",
         }
         return mapping.get(group_by.upper(), group_by) if group_by else "service"
 

@@ -40,6 +40,31 @@ const SEVERITY_COLORS: Record<string, string> = {
   low: 'green',
 };
 
+const CATEGORY_LABELS: Record<string, string> = {
+  cost: 'Cost',
+  security: 'Security',
+  reliability: 'Reliability',
+  performance: 'Performance',
+  operational_excellence: 'Operational Excellence',
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  cost: 'blue',
+  security: 'red',
+  reliability: 'green',
+  performance: 'purple',
+  operational_excellence: 'orange',
+};
+
+const DATA_SOURCE_LABELS: Record<string, string> = {
+  billing: 'Billing',
+  metrics: 'Metrics',
+  config: 'Config',
+};
+
+// Keep in sync with backend AVAILABLE_DATA_SOURCES in builtin_rules.py
+const AVAILABLE_DATA_SOURCES = new Set(['billing']);
+
 const CONDITION_TYPE_OPTIONS = [
   { value: 'name_is', label: 'Name is' },
   { value: 'name_starts_with', label: 'Name starts with' },
@@ -150,16 +175,38 @@ const RecommendationRules: React.FC = () => {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
-      render: (text: string) => <strong>{text}</strong>,
+      render: (text: string, record: RecRuleResponse) => {
+        const ds = record.data_source ?? 'billing';
+        const dsAvailable = AVAILABLE_DATA_SOURCES.has(ds);
+        const dsLabel = DATA_SOURCE_LABELS[ds] ?? ds;
+        return (
+          <Space size={6}>
+            <strong>{text}</strong>
+            {record.is_builtin && (
+              <Tag color="geekblue" style={{ fontSize: 11, margin: 0 }}>
+                Built-In
+              </Tag>
+            )}
+            {record.is_builtin && (
+              <Tag
+                color={dsAvailable ? 'green' : 'orange'}
+                style={{ fontSize: 11, margin: 0 }}
+              >
+                {dsAvailable ? dsLabel : `Needs: ${dsLabel}`}
+              </Tag>
+            )}
+          </Space>
+        );
+      },
     },
     {
       title: 'Category',
       dataIndex: 'category',
       key: 'category',
-      width: 120,
+      width: 180,
       render: (cat: string) => (
-        <Tag color={cat === 'cost' ? 'blue' : 'red'}>
-          {cat === 'cost' ? 'Cost' : 'Security'}
+        <Tag color={CATEGORY_COLORS[cat] || 'default'}>
+          {CATEGORY_LABELS[cat] || cat}
         </Tag>
       ),
     },
@@ -199,6 +246,7 @@ const RecommendationRules: React.FC = () => {
         <Switch
           size="small"
           checked={record.active}
+          disabled={record.is_builtin}
           onChange={(checked) => toggleActiveMutation.mutate({ id: record.id, active: checked })}
         />
       ),
@@ -208,19 +256,28 @@ const RecommendationRules: React.FC = () => {
       key: 'actions',
       width: 100,
       align: 'center',
-      render: (_: unknown, record: RecRuleResponse) => (
-        <Space size={4}>
-          <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-          <Popconfirm
-            title="Delete this rule?"
-            onConfirm={() => deleteMutation.mutate(record.id)}
-            okText="Delete"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
+      render: (_: unknown, record: RecRuleResponse) => {
+        if (record.is_builtin) {
+          return (
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              Read-only
+            </Typography.Text>
+          );
+        }
+        return (
+          <Space size={4}>
+            <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+            <Popconfirm
+              title="Delete this rule?"
+              onConfirm={() => deleteMutation.mutate(record.id)}
+              okText="Delete"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -285,9 +342,12 @@ const RecommendationRules: React.FC = () => {
 
           <Space size={16} style={{ width: '100%' }}>
             <Form.Item name="category" label="Category">
-              <Select style={{ width: 140 }}>
+              <Select style={{ width: 200 }}>
                 <Select.Option value="cost">Cost</Select.Option>
                 <Select.Option value="security">Security</Select.Option>
+                <Select.Option value="reliability">Reliability</Select.Option>
+                <Select.Option value="performance">Performance</Select.Option>
+                <Select.Option value="operational_excellence">Operational Excellence</Select.Option>
               </Select>
             </Form.Item>
 

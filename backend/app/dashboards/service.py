@@ -75,7 +75,7 @@ async def _get_dashboard_or_404(db: AsyncSession, dashboard_id: str, org_id: str
             Dashboard.id == dashboard_id,
             Dashboard.organization_id == org_id,
             Dashboard.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     dashboard = result.scalar_one_or_none()
     if not dashboard:
@@ -128,7 +128,7 @@ async def create_dashboard(
             Dashboard.organization_id == org_id,
             Dashboard.slug == slug,
             Dashboard.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     if existing.scalar_one_or_none():
         # Append suffix on collision
@@ -139,7 +139,7 @@ async def create_dashboard(
                     Dashboard.organization_id == org_id,
                     Dashboard.slug == candidate,
                     Dashboard.deleted_at.is_(None),
-                )
+                ).limit(1)
             )
             if not existing.scalar_one_or_none():
                 slug = candidate
@@ -211,7 +211,8 @@ async def update_dashboard(
         dashboard.widget_config = widget_config
 
     dashboard.updated_by = user_id
-    # version_id auto-increments via OptimisticLockingMixin
+    # Increment version for optimistic locking
+    dashboard.version_id += 1
     await db.flush()
 
     logger.info("Updated dashboard %s (version %d→%d)", dashboard_id, version, dashboard.version_id)
@@ -269,6 +270,7 @@ async def set_default_dashboard(
 
     dashboard.is_default = True
     dashboard.updated_by = user_id
+    dashboard.version_id += 1
     await db.flush()
 
     logger.info("Set dashboard %s as default for org %s", dashboard_id, org_id)
@@ -291,7 +293,7 @@ async def revert_dashboard(
     dashboard.layout_config = dashboard.previous_layout_config
     dashboard.previous_layout_config = current
     dashboard.updated_by = user_id
-    # version_id auto-increments
+    dashboard.version_id += 1
     await db.flush()
 
     logger.info("Reverted dashboard %s to previous layout", dashboard_id)

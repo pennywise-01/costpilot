@@ -114,13 +114,19 @@ class CostCache(Base):
             f")>"
         )
 
+    def _ensure_aware(self, dt: datetime) -> datetime:
+        """Ensure a datetime is timezone-aware (assume UTC if naive)."""
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
+
     def is_expired(self) -> bool:
         """Check if this cache entry has expired."""
-        return utc_now() > self.expires_at
+        return utc_now() > self._ensure_aware(self.expires_at)
 
     def age_hours(self) -> float:
         """Get age of this cache entry in hours."""
-        delta = utc_now() - self.collected_at
+        delta = utc_now() - self._ensure_aware(self.collected_at)
         return delta.total_seconds() / 3600
 
 

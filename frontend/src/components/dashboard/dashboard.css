@@ -2,19 +2,22 @@
 
 .dashboard-grid {
   min-height: 200px;
+  width: 100%;
 }
 
 /* Widget card height fill */
 .dashboard-grid .react-grid-item {
-  transition: all 200ms ease;
+  transition: transform 200ms ease;
 }
 
 .dashboard-grid .react-grid-item > div {
   height: 100%;
+  width: 100%;
 }
 
 .dashboard-grid .react-grid-item > div > .ant-card {
   height: 100%;
+  width: 100%;
 }
 
 /* Edit mode styling */

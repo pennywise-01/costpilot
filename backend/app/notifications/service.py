@@ -130,7 +130,7 @@ async def send_notification(
             NotificationPreference.organization_id == org_id,
             NotificationPreference.notification_type == notification_type,
             NotificationPreference.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     pref = result.scalar_one_or_none()
 
@@ -168,6 +168,46 @@ async def send_notification(
 
     await db.flush()
     return log
+
+
+async def check_preferences_for_users(
+    db: AsyncSession,
+    user_ids: list[str],
+    org_id: str,
+    notification_type: NotificationType,
+) -> dict[str, bool]:
+    """Batch check notification preferences for multiple users.
+
+    Instead of issuing N individual SELECT queries (one per user),
+    this fetches all preferences in a single query and returns a
+    dict mapping user_id -> enabled.
+
+    Users without an explicit preference get the default for the type.
+
+    Args:
+        db: Database session
+        user_ids: List of user IDs to check
+        org_id: Organization ID
+        notification_type: The notification type to check
+
+    Returns:
+        Dict mapping user_id to whether the notification is enabled
+    """
+    if not user_ids:
+        return {}
+
+    result = await db.execute(
+        select(NotificationPreference).where(
+            NotificationPreference.user_id.in_(user_ids),
+            NotificationPreference.organization_id == org_id,
+            NotificationPreference.notification_type == notification_type,
+            NotificationPreference.deleted_at.is_(None),
+        )
+    )
+    prefs = {p.user_id: p.enabled for p in result.scalars().all()}
+
+    default_enabled = DEFAULT_PREFS.get(notification_type, False)
+    return {uid: prefs.get(uid, default_enabled) for uid in user_ids}
 
 
 async def send_test_notification(

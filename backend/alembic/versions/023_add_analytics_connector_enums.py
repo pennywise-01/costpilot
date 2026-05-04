@@ -24,44 +24,41 @@ depends_on = None
 
 def upgrade() -> None:
     """Add analytics connector enum values and config column."""
-    
+
     conn = op.get_bind()
-    
+
     # Add new enum values to cloudtype
     print("Adding analytics enum values to cloudtype...")
-    
+
     new_values = ['bigquery', 'redshift', 'athena', 'synapse']
-    
+
     for value in new_values:
         try:
             conn.execute(sa.text(f"""
                 ALTER TYPE cloudtype ADD VALUE IF NOT EXISTS '{value}'
             """))
-            conn.commit()
             print(f"✅ Added '{value}' to cloudtype enum")
         except Exception as e:
             print(f"⚠️  '{value}' may already exist: {e}")
-    
+
     # Add data_source_config column for analytics-specific settings
     print("Adding data_source_config column to cloud_accounts...")
-    
+
     conn.execute(sa.text("""
-        ALTER TABLE cloud_accounts 
+        ALTER TABLE cloud_accounts
         ADD COLUMN IF NOT EXISTS data_source_config JSON
     """))
-    conn.commit()
     print("✅ Added data_source_config column")
-    
+
     # Add last_schema_sync column for tracking schema validation
     print("Adding last_schema_sync column to cloud_accounts...")
-    
+
     conn.execute(sa.text("""
-        ALTER TABLE cloud_accounts 
+        ALTER TABLE cloud_accounts
         ADD COLUMN IF NOT EXISTS last_schema_sync TIMESTAMP WITH TIME ZONE
     """))
-    conn.commit()
     print("✅ Added last_schema_sync column")
-    
+
     print("\n✅ Analytics connector schema migration complete!")
 
 

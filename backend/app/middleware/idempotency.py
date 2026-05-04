@@ -45,7 +45,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 select(IdempotencyKey).where(
                     IdempotencyKey.key == idem_key,
                     IdempotencyKey.expires_at > datetime.now(timezone.utc),
-                )
+                ).limit(1)
             )
             existing = result.scalar_one_or_none()
 

@@ -38,6 +38,18 @@ def bigquery_config():
 
 
 @pytest.fixture
+def bigquery_config_no_key():
+    """BigQuery configuration without service account key (uses ADC)."""
+    return {
+        "project_id": "test-gcp-project",
+        "dataset_id": "cloud_billing",
+        "table_name": "gcp_billing_export",
+        "location": "US",
+        "query_timeout": 120
+    }
+
+
+@pytest.fixture
 def mock_bigquery_row():
     """Mock BigQuery row object."""
     row = MagicMock()
@@ -58,12 +70,12 @@ def mock_query_job():
     """Mock BigQuery query job."""
     job = MagicMock()
     
-    # Mock rows
-    rows = [
-        {"invoice_month": "2026-04", "service_name": "Compute Engine", "total_cost": 150.50},
-        {"invoice_month": "2026-03", "service_name": "Compute Engine", "total_cost": 200.00},
-    ]
-    job.result.return_value = rows
+    # Mock rows with row_count attribute (BigQuery Row objects)
+    mock_row = MagicMock()
+    mock_row.row_count = 42
+    mock_row.__getitem__ = lambda self, key: {"invoice_month": "2026-04", "service_name": "Compute Engine", "total_cost": 150.50}[key]
+    mock_row.keys.return_value = ["invoice_month", "service_name", "total_cost"]
+    job.result.return_value = [mock_row]
     job.done.return_value = True
     return job
 
@@ -122,31 +134,32 @@ class TestBigQueryAdapter:
         adapter = BigQueryAdapter(bigquery_config)
         assert adapter.platform_type == CloudType.BIGQUERY
     
-    @patch('app.cloud_accounts.adapters.bigquery.bigquery.Client')
     @pytest.mark.asyncio
-    async def test_validate_credentials_success(self, mock_client_cls, bigquery_config, mock_query_job):
+    async def test_validate_credentials_success(self, bigquery_config_no_key, mock_query_job):
         """Test successful credential validation."""
         mock_client = MagicMock()
         mock_client.query.return_value = mock_query_job
+        mock_schema_cost = MagicMock()
+        mock_schema_cost.name = "cost"
+        mock_schema_usage = MagicMock()
+        mock_schema_usage.name = "usage_start_date"
+        mock_schema_invoice = MagicMock()
+        mock_schema_invoice.name = "invoice_month"
         mock_client.get_table.return_value = MagicMock(
-            schema=[
-                MagicMock(name="cost"),
-                MagicMock(name="usage_start_date"),
-                MagicMock(name="invoice_month")
-            ]
+            schema=[mock_schema_cost, mock_schema_usage, mock_schema_invoice]
         )
-        mock_client_cls.return_value = mock_client
         
-        adapter = BigQueryAdapter(bigquery_config)
-        result = await adapter.validate_credentials()
+        adapter = BigQueryAdapter(bigquery_config_no_key)
+        with patch.object(adapter, '_get_client', return_value=mock_client):
+            result = await adapter.validate_credentials()
         
-        assert result["valid"] is True
+        assert result["valid"] is True, f"validate_credentials returned: {result}"
         assert result["table_exists"] is True
         assert result["schema_valid"] is True
     
     @patch('app.cloud_accounts.adapters.bigquery.bigquery.Client')
     @pytest.mark.asyncio
-    async def test_validate_credentials_table_not_found(self, mock_client_cls, bigquery_config):
+    async def test_validate_credentials_table_not_found(self, mock_client_cls, bigquery_config_no_key):
         """Test validation when table doesn't exist."""
         from google.api_core.exceptions import NotFound
         
@@ -154,7 +167,7 @@ class TestBigQueryAdapter:
         mock_client.query.side_effect = NotFound("Table not found")
         mock_client_cls.return_value = mock_client
         
-        adapter = BigQueryAdapter(bigquery_config)
+        adapter = BigQueryAdapter(bigquery_config_no_key)
         result = await adapter.validate_credentials()
         
         assert result["valid"] is False
@@ -162,7 +175,7 @@ class TestBigQueryAdapter:
     
     @patch('app.cloud_accounts.adapters.bigquery.bigquery.Client')
     @pytest.mark.asyncio
-    async def test_validate_credentials_permission_denied(self, mock_client_cls, bigquery_config):
+    async def test_validate_credentials_permission_denied(self, mock_client_cls, bigquery_config_no_key):
         """Test validation when permissions are insufficient."""
         from google.api_core.exceptions import Forbidden
         
@@ -170,7 +183,7 @@ class TestBigQueryAdapter:
         mock_client.query.side_effect = Forbidden("Permission denied")
         mock_client_cls.return_value = mock_client
         
-        adapter = BigQueryAdapter(bigquery_config)
+        adapter = BigQueryAdapter(bigquery_config_no_key)
         result = await adapter.validate_credentials()
         
         assert result["valid"] is False
@@ -179,7 +192,7 @@ class TestBigQueryAdapter:
     
     @patch('app.cloud_accounts.adapters.bigquery.bigquery.Client')
     @pytest.mark.asyncio
-    async def test_get_cost_and_usage(self, mock_client_cls, bigquery_config, mock_query_job):
+    async def test_get_cost_and_usage(self, mock_client_cls, bigquery_config_no_key, mock_query_job):
         """Test cost and usage query execution."""
         mock_client = MagicMock()
         mock_rows = [
@@ -190,7 +203,7 @@ class TestBigQueryAdapter:
         mock_client.query.return_value = mock_query_job
         mock_client_cls.return_value = mock_client
         
-        adapter = BigQueryAdapter(bigquery_config)
+        adapter = BigQueryAdapter(bigquery_config_no_key)
         result = await adapter.get_cost_and_usage("2026-04-01", "2026-04-30")
         
         assert "columns" in result
@@ -200,7 +213,7 @@ class TestBigQueryAdapter:
     
     @patch('app.cloud_accounts.adapters.bigquery.bigquery.Client')
     @pytest.mark.asyncio
-    async def test_get_monthly_cost_summary(self, mock_client_cls, bigquery_config):
+    async def test_get_monthly_cost_summary(self, mock_client_cls, bigquery_config_no_key):
         """Test monthly cost summary aggregation."""
         mock_client = MagicMock()
         mock_rows = [
@@ -212,7 +225,7 @@ class TestBigQueryAdapter:
         mock_client.query.return_value = mock_job
         mock_client_cls.return_value = mock_client
         
-        adapter = BigQueryAdapter(bigquery_config)
+        adapter = BigQueryAdapter(bigquery_config_no_key)
         result = await adapter.get_monthly_cost_summary()
         
         assert "this_month" in result
@@ -223,7 +236,7 @@ class TestBigQueryAdapter:
     
     @patch('app.cloud_accounts.adapters.bigquery.bigquery.Client')
     @pytest.mark.asyncio
-    async def test_get_daily_costs(self, mock_client_cls, bigquery_config):
+    async def test_get_daily_costs(self, mock_client_cls, bigquery_config_no_key):
         """Test daily cost retrieval."""
         mock_client = MagicMock()
         mock_rows = [
@@ -235,7 +248,7 @@ class TestBigQueryAdapter:
         mock_client.query.return_value = mock_job
         mock_client_cls.return_value = mock_client
         
-        adapter = BigQueryAdapter(bigquery_config)
+        adapter = BigQueryAdapter(bigquery_config_no_key)
         result = await adapter.get_daily_costs("2026-04-01", "2026-04-02")
         
         assert len(result) == 2
@@ -244,7 +257,7 @@ class TestBigQueryAdapter:
     
     @patch('app.cloud_accounts.adapters.bigquery.bigquery.Client')
     @pytest.mark.asyncio
-    async def test_discover_resources(self, mock_client_cls, bigquery_config):
+    async def test_discover_resources(self, mock_client_cls, bigquery_config_no_key):
         """Test resource discovery from billing table."""
         mock_client = MagicMock()
         mock_rows = [
@@ -262,7 +275,7 @@ class TestBigQueryAdapter:
         mock_client.query.return_value = mock_job
         mock_client_cls.return_value = mock_client
         
-        adapter = BigQueryAdapter(bigquery_config)
+        adapter = BigQueryAdapter(bigquery_config_no_key)
         resources = await adapter.discover_resources()
         
         assert len(resources) == 1
@@ -270,28 +283,32 @@ class TestBigQueryAdapter:
         assert resources[0]["region"] == "us-central1"
     
     @pytest.mark.asyncio
-    async def test_validate_table_schema_valid(self, bigquery_config):
+    async def test_validate_table_schema_valid(self, bigquery_config_no_key):
         """Test schema validation when all columns present."""
         with patch.object(BigQueryAdapter, '_get_client') as mock_get_client:
             mock_client = MagicMock()
             mock_table = MagicMock()
-            mock_table.schema = [
-                MagicMock(name="invoice_month"),
-                MagicMock(name="usage_start_date"),
-                MagicMock(name="cost"),
-                MagicMock(name="service_name")
-            ]
+            schema_fields = []
+            for field_name in [
+                "invoice_month", "usage_start_date", "usage_end_date",
+                "cost", "currency", "service_name", "resource_type",
+                "region", "resource_id", "project_name",
+            ]:
+                m = MagicMock()
+                m.name = field_name
+                schema_fields.append(m)
+            mock_table.schema = schema_fields
             mock_client.get_table.return_value = mock_table
             mock_get_client.return_value = mock_client
             
-            adapter = BigQueryAdapter(bigquery_config)
+            adapter = BigQueryAdapter(bigquery_config_no_key)
             result = await adapter.validate_table_schema()
             
-            assert result["valid"] is True
+            assert result["valid"] is True, f"validate_table_schema returned: {result}"
             assert len(result["missing_columns"]) == 0
     
     @pytest.mark.asyncio
-    async def test_validate_table_schema_missing_columns(self, bigquery_config):
+    async def test_validate_table_schema_missing_columns(self, bigquery_config_no_key):
         """Test schema validation when columns are missing."""
         with patch.object(BigQueryAdapter, '_get_client') as mock_get_client:
             mock_client = MagicMock()
@@ -302,7 +319,7 @@ class TestBigQueryAdapter:
             mock_client.get_table.return_value = mock_table
             mock_get_client.return_value = mock_client
             
-            adapter = BigQueryAdapter(bigquery_config)
+            adapter = BigQueryAdapter(bigquery_config_no_key)
             result = await adapter.validate_table_schema()
             
             assert result["valid"] is False

@@ -39,7 +39,7 @@ async def enrich_pool_with_spent_and_owner(
             owner = employees.get(pool.default_owner_id)
         else:
             emp_result = await db.execute(
-                select(Employee).where(Employee.id == pool.default_owner_id)
+                select(Employee).where(Employee.id == pool.default_owner_id).limit(1)
             )
             employee = emp_result.scalar_one_or_none()
             if employee:

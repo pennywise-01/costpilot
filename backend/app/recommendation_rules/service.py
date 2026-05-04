@@ -70,7 +70,7 @@ async def get_rec_rule(db: AsyncSession, rule_id: str) -> RecommendationRule:
         select(RecommendationRule).where(
             RecommendationRule.id == rule_id,
             RecommendationRule.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     rule = result.scalar_one_or_none()
     if not rule:

@@ -81,7 +81,7 @@ async def _send_invitation_email(
         select(Organization).where(
             Organization.id == org_id,
             Organization.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     org = org_result.scalar_one_or_none()
     org_name = org.name if org else "CostPilot"

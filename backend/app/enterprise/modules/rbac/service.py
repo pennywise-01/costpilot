@@ -77,7 +77,7 @@ async def create_role(db: AsyncSession, org_id: str, data: RoleCreate) -> Role:
             Role.organization_id == org_id,
             Role.name == data.name,
             Role.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     if existing.scalar_one_or_none():
         raise ConflictError(f"Role '{data.name}' already exists")
@@ -125,7 +125,7 @@ async def seed_default_roles(db: AsyncSession, org_id: str) -> list[Role]:
                 Role.organization_id == org_id,
                 Role.name == role_config["name"],
                 Role.deleted_at.is_(None),
-            )
+            ).limit(1)
         )
         existing_role = existing.scalar_one_or_none()
         if existing_role:
@@ -172,7 +172,7 @@ async def get_default_owner_role(db: AsyncSession, org_id: str) -> Role | None:
                 Role.organization_id == org_id,
                 Role.name == role_name,
                 Role.deleted_at.is_(None),
-            )
+            ).limit(1)
         )
         role = result.scalar_one_or_none()
         if role:
@@ -206,7 +206,7 @@ async def get_role(db: AsyncSession, org_id: str, role_id: str) -> Role:
             Role.id == role_id,
             Role.organization_id == org_id,
             Role.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     role = result.scalar_one_or_none()
     if not role:
@@ -272,7 +272,7 @@ async def assign_role(
             UserRoleAssignment.role_id == role_id,
             UserRoleAssignment.organization_id == org_id,
             UserRoleAssignment.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     if existing.scalar_one_or_none():
         raise ConflictError("User already has this role in this organization")
@@ -330,7 +330,7 @@ async def revoke_role(db: AsyncSession, org_id: str, assignment_id: str) -> User
             UserRoleAssignment.id == assignment_id,
             UserRoleAssignment.organization_id == org_id,
             UserRoleAssignment.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     assignment = result.scalar_one_or_none()
     if not assignment:
@@ -389,7 +389,7 @@ async def get_abac_policy(db: AsyncSession, org_id: str, policy_id: str) -> ABAC
             ABACPolicy.id == policy_id,
             ABACPolicy.organization_id == org_id,
             ABACPolicy.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     policy = result.scalar_one_or_none()
     if not policy:
@@ -461,7 +461,7 @@ async def decide_access_review(
             AccessReview.id == review_id,
             AccessReview.organization_id == org_id,
             AccessReview.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     review = result.scalar_one_or_none()
     if not review:
@@ -547,7 +547,7 @@ async def check_permission(
                 Employee.organization_id == org_id,
                 Employee.auth_user_id == req.user_id,
                 Employee.deleted_at.is_(None),
-            )
+            ).limit(1)
         )
         employee = result.scalar_one_or_none()
         # Grant access if user is an active member (fallback for non-enterprise)
@@ -623,7 +623,7 @@ async def create_sso_config(
             SSOConfig.organization_id == org_id,
             SSOConfig.provider == data.provider,
             SSOConfig.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     if existing.scalar_one_or_none():
         raise ConflictError(f"SSO config for provider '{data.provider}' already exists")
@@ -660,7 +660,7 @@ async def get_sso_config(db: AsyncSession, org_id: str, config_id: str) -> SSOCo
             SSOConfig.id == config_id,
             SSOConfig.organization_id == org_id,
             SSOConfig.deleted_at.is_(None),
-        )
+        ).limit(1)
     )
     config = result.scalar_one_or_none()
     if not config:

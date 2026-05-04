@@ -27,6 +27,7 @@ _ALLOWED_GROUP_BY_FIELDS: frozenset[str] = frozenset({
 })
 
 _SQL_IDENTIFIER_RE = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_.]*$')
+_BIGQUERY_IDENTIFIER_RE = re.compile(r'^`[a-zA-Z0-9_.\-]+`$')
 _DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 
 
@@ -34,12 +35,20 @@ def validate_sql_identifier(identifier: str, field_name: str = "identifier") -> 
     """Validate a SQL identifier (table name, schema name, column name).
 
     Only allows alphanumeric characters, underscores, and dots.
+    Also accepts BigQuery backtick-quoted identifiers (e.g., `project.dataset.table`).
     Prevents SQL injection through identifiers which cannot be parameterized.
 
     Raises:
         BadRequestError: If the identifier contains disallowed characters.
     """
-    if not identifier or not _SQL_IDENTIFIER_RE.match(identifier):
+    if not identifier:
+        raise BadRequestError(f"Invalid {field_name}: empty identifier")
+
+    # Accept BigQuery backtick-quoted identifiers
+    if _BIGQUERY_IDENTIFIER_RE.match(identifier):
+        return identifier
+
+    if not _SQL_IDENTIFIER_RE.match(identifier):
         raise BadRequestError(f"Invalid {field_name}: '{identifier}' contains disallowed characters")
     return identifier
 

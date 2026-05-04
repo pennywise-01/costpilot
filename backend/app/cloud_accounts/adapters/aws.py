@@ -331,6 +331,13 @@ class AWSAdapter(CloudAdapter):
         
         Returns list of {date, cost, [group_key]} dicts.
         """
+        # AWS Cost Explorer does not support TAG as a simple dimension.
+        # Tag grouping requires specifying a specific tag key, which we don't
+        # have at this level. Return empty list for tag grouping.
+        if group_by and group_by.upper() == "TAG":
+            logger.debug("AWS: skipping TAG group_by (not supported as dimension)")
+            return []
+
         group_dims = [group_by.upper()] if group_by else None
         data = await self.get_cost_and_usage(
             start_date=start_date,

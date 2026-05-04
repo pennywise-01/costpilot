@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo, useRef } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
+import React, { Suspense, useCallback, useMemo } from 'react';
+import GridLayout, { WidthProvider } from 'react-grid-layout';
+import { Spin } from 'antd';
 import { WIDGET_REGISTRY } from './widgetRegistry';
 import WidgetShell from './widgets/WidgetShell';
 import type { LayoutItem, WidgetConfigEntry } from '@/api/dashboards';
@@ -8,52 +9,65 @@ import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import './dashboard.css';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const DashboardGridLayout = WidthProvider(GridLayout);
 
 interface DashboardGridProps {
   layout: LayoutItem[];
   widgets: Record<string, WidgetConfigEntry>;
   data: Record<string, unknown> | undefined;
   errors: Record<string, string> | undefined;
+  loading: boolean;
   editMode: boolean;
   onLayoutChange: (layout: LayoutItem[]) => void;
   onRemoveWidget?: (widgetId: string) => void;
   onConfigureWidget?: (widgetId: string) => void;
 }
 
+const WidgetLoadingFallback: React.FC = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 120 }}>
+    <Spin />
+  </div>
+);
+
 const DashboardGrid: React.FC<DashboardGridProps> = ({
   layout,
   widgets,
   data,
   errors,
+  loading,
   editMode,
   onLayoutChange,
   onRemoveWidget,
   onConfigureWidget,
 }) => {
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const handleLayoutChange = useCallback(
     (currentLayout: any) => {
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
-      debounceTimer.current = setTimeout(() => {
-        const items: any[] = Array.isArray(currentLayout) ? currentLayout : [];
-        const newLayout: LayoutItem[] = items.map((item: any) => ({
-          i: item.i,
-          x: item.x,
-          y: item.y,
-          w: item.w,
-          h: item.h,
-          minW: item.minW,
-          minH: item.minH,
-          maxW: item.maxW,
-          maxH: item.maxH,
-          static: item.static,
-        }));
-        onLayoutChange(newLayout);
-      }, 500);
+      const items: any[] = Array.isArray(currentLayout) ? currentLayout : [];
+      const newLayout: LayoutItem[] = items.map((item: any) => ({
+        ...(function () {
+          const widgetConfig = widgets[item.i];
+          const definition = widgetConfig ? WIDGET_REGISTRY[widgetConfig.type] : null;
+          const requiredMinW = definition?.minW ?? 1;
+          const requiredMinH = definition?.minH ?? 1;
+          const minW = Math.max(item.minW ?? requiredMinW, requiredMinW);
+          const minH = Math.max(item.minH ?? requiredMinH, requiredMinH);
+          return {
+            minW,
+            minH,
+            w: Math.max(item.w, minW),
+            h: Math.max(item.h, minH),
+          };
+        })(),
+        i: item.i,
+        x: item.x,
+        y: item.y,
+        maxW: item.maxW,
+        maxH: item.maxH,
+        static: item.static,
+      }));
+      onLayoutChange(newLayout);
     },
-    [onLayoutChange],
+    [onLayoutChange, widgets],
   );
 
   // Build react-grid-layout layout from stored layout_config with registry constraints
@@ -61,36 +75,44 @@ const DashboardGrid: React.FC<DashboardGridProps> = ({
     return layout.map((item) => {
       const widgetConfig = widgets[item.i];
       const definition = widgetConfig ? WIDGET_REGISTRY[widgetConfig.type] : null;
+      const requiredMinW = definition?.minW ?? 1;
+      const requiredMinH = definition?.minH ?? 1;
+      const minW = Math.max(item.minW ?? requiredMinW, requiredMinW);
+      const minH = Math.max(item.minH ?? requiredMinH, requiredMinH);
+      const maxW = Math.max(item.maxW ?? 12, minW);
+      const maxH = Math.max(item.maxH ?? 20, minH);
+
       return {
         i: item.i,
         x: item.x,
         y: item.y,
-        w: item.w,
-        h: item.h,
-        minW: item.minW ?? definition?.minW ?? 1,
-        minH: item.minH ?? definition?.minH ?? 1,
-        maxW: item.maxW ?? 12,
-        maxH: item.maxH ?? 20,
+        w: Math.max(item.w, minW),
+        h: Math.max(item.h, minH),
+        minW,
+        minH,
+        maxW,
+        maxH,
         static: item.static ?? false,
       };
     });
   }, [layout, widgets]);
 
   return (
-    <ResponsiveGridLayout
+    <DashboardGridLayout
       className="dashboard-grid"
-      layouts={{ lg: mergedLayout, md: mergedLayout, sm: mergedLayout }}
-      breakpoints={{ lg: 1200, md: 996, sm: 768 }}
-      cols={{ lg: 12, md: 6, sm: 1 }}
+      layout={mergedLayout}
+      cols={12}
       rowHeight={60}
       isDraggable={editMode}
       isResizable={editMode}
-      onLayoutChange={handleLayoutChange}
+      onLayoutChange={editMode ? handleLayoutChange : undefined}
       draggableCancel=".ant-card-head-extra,.ant-btn"
-      compactType="vertical"
+      compactType={editMode ? null : 'vertical'}
+      preventCollision={editMode}
+      allowOverlap={false}
       margin={[16, 16] as [number, number]}
     >
-      {layout.map((item) => {
+      {mergedLayout.map((item) => {
         const widgetConfig = widgets[item.i];
         if (!widgetConfig) {
           return (
@@ -115,19 +137,21 @@ const DashboardGrid: React.FC<DashboardGridProps> = ({
         const WidgetComponent = definition?.component;
 
         return (
-          <div key={item.i} style={{ height: '100%' }}>
+          <div key={item.i} style={{ height: '100%', width: '100%' }}>
             {WidgetComponent ? (
-              <WidgetComponent
-                widgetId={item.i}
-                config={widgetConfig as any}
-                data={metricData}
-                loading={false}
-                error={metricError}
-                editMode={editMode}
-                onRemove={onRemoveWidget ? () => onRemoveWidget(item.i) : undefined}
-                onConfigure={onConfigureWidget ? () => onConfigureWidget(item.i) : undefined}
-                onRetry={() => {}}
-              />
+              <Suspense fallback={<WidgetLoadingFallback />}>
+                <WidgetComponent
+                  widgetId={item.i}
+                  config={widgetConfig as any}
+                  data={metricData}
+                  loading={loading}
+                  error={metricError}
+                  editMode={editMode}
+                  onRemove={onRemoveWidget ? () => onRemoveWidget(item.i) : undefined}
+                  onConfigure={onConfigureWidget ? () => onConfigureWidget(item.i) : undefined}
+                  onRetry={() => {}}
+                />
+              </Suspense>
             ) : (
               <WidgetShell
                 widgetId={item.i}
@@ -143,7 +167,7 @@ const DashboardGrid: React.FC<DashboardGridProps> = ({
           </div>
         );
       })}
-    </ResponsiveGridLayout>
+    </DashboardGridLayout>
   );
 };
 

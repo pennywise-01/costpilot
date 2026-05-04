@@ -40,10 +40,11 @@
 - **Problem:** Plain Python dicts with TTL-based expiry but no max size, no LRU eviction, and no periodic cleanup. Stale entries for deleted entities accumulate forever. In multi-instance deployments, each process has its own stale copy.
 - **Scope:**
   - [x] Created `BoundedCache` class in `app/shared/bounded_cache.py` — LRU cache with OrderedDict, TTL, asyncio.Lock, automatic eviction, and stats tracking
-  - [ ] Replace `_expense_cache` with `BoundedCache` or Redis-backed cache with max size and eviction
-  - [ ] Replace `_resource_cache` and `_resource_detail_cache` with bounded cache
-  - [ ] Replace `_live_data_cache` with bounded cache + periodic cleanup job
-  - [ ] Replace `_csp_cache` with bounded cache
+  - [x] Created `SyncBoundedCache` in `app/shared/sync_bounded_cache.py` — synchronous LRU cache with threading.Lock for sync/async contexts
+  - [x] Replace `_expense_cache` with `SyncBoundedCache` (max 500 entries, per-operation TTL)
+  - [x] Replace `_resource_cache` and `_resource_detail_cache` with `SyncBoundedCache` (max 500 entries each)
+  - [x] `_live_data_cache` already uses `TTLCache` from cachetools (bounded by design)
+  - [x] Replace `_csp_cache` with `SyncBoundedCache` (max 200 entries)
   - [ ] Wire existing `CloudCache` Redis support (defined but never used)
   - [ ] Add cache invalidation events when cloud accounts are deleted/updated
 
@@ -97,7 +98,7 @@
   - [x] Added `selectinload(Rule.conditions)` to `list_rules`, `get_rule` queries
   - [x] Added `selectin` lazy loading to `CloudAccount.organization` relationship
   - [x] Fixed `enrich_pool_with_spent_and_owner` to use pre-fetched employees dict
-  - [ ] Add batch method `check_preferences_for_users` in notification service
+  - [x] Added batch method `check_preferences_for_users` in notification service — single query for N users
 
 ---
 
@@ -292,7 +293,8 @@
   - [x] Created `OptimisticLockingMixin` in `app/shared/models.py`
   - [x] Added mixin to 23 mutable models across 11 files
   - [x] Created Alembic migration `012_add_optimistic_locking_version_id.py`
-  - [ ] Add `StaleDataError` handling returning 409 Conflict
+  - [x] Added `StaleDataError` exception in `app/shared/exceptions.py` returning 409 Conflict
+  - [x] `BaseService.update()` catches SQLAlchemy StaleDataError and raises `StaleDataError`
   - [ ] Document optimistic locking for API consumers
 
 ---
@@ -364,13 +366,23 @@
 
 ## REL-08 — Add Distributed Tracing (OpenTelemetry)
 
-- **Status:** - Not started
+- **Status:** x Complete
 - **Priority:** P2
 - **Category:** Observability / Tracing
-- **Affected Files:** Throughout entire backend
+- **Affected Files:**
+  - `backend/app/shared/tracing.py` — **NEW** — OpenTelemetry tracing configuration
+  - `backend/app/config.py` — `OTEL_ENABLED`, `OTEL_EXPORTER_OTLP_ENDPOINT`
+  - `backend/app/main.py` — `init_tracing()` in lifespan, `instrument_fastapi_app()`
+  - `backend/pyproject.toml` — OpenTelemetry dependencies
 - **Problem:** No OpenTelemetry, Jaeger, or any tracing instrumentation. A request flowing through middleware → router → service → cloud adapter → cloud API cannot be traced as a single operation.
 - **Scope:**
-  - [ ] OpenTelemetry distributed tracing deferred — structured logging with correlation IDs provides equivalent request tracing
+  - [x] Created `app/shared/tracing.py` with OpenTelemetry configuration
+  - [x] Added `OTEL_ENABLED` and `OTEL_EXPORTER_OTLP_ENDPOINT` config settings
+  - [x] Auto-instruments FastAPI, SQLAlchemy, Redis, and httpx
+  - [x] Supports OTLP gRPC exporter and console exporter
+  - [x] Provides `create_span()`, `add_span_attributes()`, `record_exception()` helpers
+  - [x] Zero overhead when disabled (default)
+  - [x] Wired into application lifespan startup
 
 ---
 
@@ -836,7 +848,7 @@
 | REL-05 | Wire graceful degradation into router endpoints | P1 | x |
 | REL-06 | Add structured logging with correlation IDs | P2 | x |
 | REL-07 | Add metrics export (Prometheus/StatsD) | P2 | x |
-| REL-08 | Add distributed tracing (OpenTelemetry) | P2 | - |
+| REL-08 | Add distributed tracing (OpenTelemetry) | P2 | x |
 | REL-09 | Improve health checks to test actual CSP connectivity | P2 | x |
 | REL-10 | Add dead letter queue for failed scheduler jobs | P2 | x |
 | REL-11 | Fix scheduler DB session held open during CSP API calls | P2 | x |
@@ -884,23 +896,22 @@
 | Category | P0 | P1 | P2 | P3 | Total |
 |----------|----|----|----|----|-------|
 | **Optimization** | 3 | 4 | 4 | 2 | 13 |
-| **Reliability** | 3 | 3 | 5 | 2 | 13 |
+| **Reliability** | 3 | 3 | 6 | 2 | 14 |
 | **Security** | 2 | 8 | 7 | 2 | 19 |
-| **TOTAL** | **8** | **15** | **16** | **6** | **45** |
+| **TOTAL** | **8** | **15** | **17** | **6** | **46** |
 
 ## Remaining
 
 | Category | P0 | P1 | P2 | P3 | Total |
 |----------|----|----|----|----|-------|
 | **Optimization** | 0 | 0 | 0 | 0 | 0 |
-| **Reliability** | 0 | 0 | 1 | 0 | 1 |
+| **Reliability** | 0 | 0 | 0 | 0 | 0 |
 | **Security** | 1 | 0 | 0 | 0 | 1 |
-| **TOTAL** | **1** | **0** | **1** | **0** | **2** |
+| **TOTAL** | **1** | **0** | **0** | **0** | **1** |
 
-**Completion Rate:** 45/47 (96%)
+**Completion Rate:** 46/47 (98%)
 
 **Test Results:** 575 passed, 0 failed (excluding 2 tests requiring live PostgreSQL)
 
 **Remaining Items:**
 1. **SEC-03** — MFA (P0, Critical) — *Deferred as final item to implement*
-2. **REL-08** — OpenTelemetry Distributed Tracing (P2) — *Deferred: structured logging with correlation IDs provides equivalent request tracing*

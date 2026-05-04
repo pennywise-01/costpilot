@@ -36,6 +36,7 @@ const AreaChartWidget: React.FC<AreaChartWidgetProps> = ({
     xField: 'date',
     yField: 'cost',
     smooth,
+    autoFit: true,
     height: 250,
     color: '#1677ff',
     areaStyle: { fill: 'l(270) 0:#ffffff 0.5:#d6e4ff 1:#1677ff' },

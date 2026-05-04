@@ -52,7 +52,7 @@ class TestValidateSqlIdentifier:
             validate_sql_identifier("tbl name")
 
     def test_rejects_empty(self):
-        with pytest.raises(BadRequestError, match="disallowed characters"):
+        with pytest.raises(BadRequestError, match="empty identifier|disallowed characters"):
             validate_sql_identifier("")
 
     def test_rejects_quote(self):

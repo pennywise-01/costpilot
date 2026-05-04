@@ -25,12 +25,13 @@ from app.expenses.schemas import (
 from app.shared.crypto import decrypt
 from app.shared.enums import CloudType
 from app.shared.request_coalescing import coalesce_cloud_costs, coalesce_azure_costs
+from app.shared.sync_bounded_cache import SyncBoundedCache
 from app.shared.utils.time import utc_now
 
 logger = logging.getLogger(__name__)
 
-# In-memory cache for expense data (org_id -> (data, timestamp))
-_expense_cache: dict[str, tuple[dict, float]] = {}
+# Bounded LRU cache for expense data (max 500 entries, 5 min TTL)
+_expense_cache = SyncBoundedCache(max_size=500, ttl_seconds=300, name="expenses")
 
 
 def _get_cache_key(org_id: str, operation: str, **params) -> str:
@@ -43,27 +44,20 @@ def _get_cached_expense_data(org_id: str, operation: str, **params) -> dict | No
     """Get cached expense data if not expired."""
     if not settings.CLOUD_CACHE_ENABLED:
         return None
-    
+
     cache_key = _get_cache_key(org_id, operation, **params)
-    if cache_key in _expense_cache:
-        data, timestamp = _expense_cache[cache_key]
-        ttl = settings.CACHE_TTL_EXPENSE_SUMMARY if operation == "summary" else settings.CACHE_TTL_EXPENSE_BREAKDOWN
-        if utc_now().timestamp() - timestamp < ttl:
-            logger.debug(f"Expense cache hit: {cache_key}")
-            return data
-        # Expired, remove it
-        del _expense_cache[cache_key]
-    return None
+    return _expense_cache.get(cache_key)
 
 
 def _set_cached_expense_data(org_id: str, operation: str, data: dict, **params) -> None:
     """Cache expense data."""
     if not settings.CLOUD_CACHE_ENABLED:
         return
-    
+
     cache_key = _get_cache_key(org_id, operation, **params)
-    _expense_cache[cache_key] = (data, utc_now().timestamp())
-    logger.debug(f"Cached expense data: {cache_key}")
+    ttl = settings.CACHE_TTL_EXPENSE_SUMMARY if operation == "summary" else settings.CACHE_TTL_EXPENSE_BREAKDOWN
+    _expense_cache.set(cache_key, data, ttl_seconds=ttl)
+    logger.debug("Cached expense data: %s", cache_key)
 
 
 async def _get_cloud_adapters(db: AsyncSession, org_id: str) -> list[tuple[CloudAccount, AWSAdapter | AzureAdapter]]:
@@ -396,11 +390,9 @@ async def get_clean_expenses(
     """Return expense line items from Cost Explorer grouped by service."""
     # Check cache first
     cache_key = f"clean_expenses:{org_id}:{limit}:{offset}"
-    if cache_key in _expense_cache:
-        data, timestamp = _expense_cache[cache_key]
-        if utc_now().timestamp() - timestamp < settings.CACHE_TTL_EXPENSE_BREAKDOWN:
-            return [CleanExpense(**item) for item in data]
-        del _expense_cache[cache_key]
+    cached = _expense_cache.get(cache_key)
+    if cached is not None:
+        return [CleanExpense(**item) for item in cached]
 
     from app.database import async_session_factory
 
@@ -476,9 +468,6 @@ async def get_clean_expenses(
     
     # Cache the result
     if settings.CLOUD_CACHE_ENABLED:
-        _expense_cache[cache_key] = (
-            [item.model_dump() for item in result],
-            utc_now().timestamp()
-        )
+        _expense_cache.set(cache_key, [item.model_dump() for item in result])
     
     return result
