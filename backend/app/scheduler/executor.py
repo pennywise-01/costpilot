@@ -320,26 +320,54 @@ async def execute_scheduler_job(scheduler_id: str, existing_run_id: str | None =
             )
             try:
                 from app.database import get_mongo_db
+                from app.advisor_findings.service import (
+                    collect_advisor_findings_for_org,
+                )
                 mongo_db = get_mongo_db()
                 async with async_session_factory() as session:
                     recommendations = await fetch_csp_recommendations(
                         session, mongo_db, config.organization_id
                     )
+                # Tier-1 advisor findings ingest (separate session, separate
+                # exception scope so a failure here doesn't lose the CSP
+                # recommendations we just fetched).
+                advisor_count = 0
+                try:
+                    async with async_session_factory() as session:
+                        advisor_count = await collect_advisor_findings_for_org(
+                            session, config.organization_id,
+                        )
+                        await session.commit()
+                except Exception as advisor_err:
+                    logger.warning(
+                        "Advisor findings ingest failed for org %s: %s",
+                        config.organization_id, advisor_err,
+                    )
                 results["recommendations"]["success"] = True
-                results["recommendations"]["records"] = len(recommendations)
+                results["recommendations"]["records"] = (
+                    len(recommendations) + advisor_count
+                )
 
                 async with async_session_factory() as session:
                     run = await session.get(SchedulerRun, run_id)
                     if run:
                         run.collected_recommendations = True
                         run.recommendations_status = SchedulerStatus.COMPLETED.value
-                        run.recommendations_records = len(recommendations)
+                        run.recommendations_records = (
+                            len(recommendations) + advisor_count
+                        )
                         await _log_run_event(
                             session,
                             run_id,
                             LogLevel.INFO,
-                            f"Recommendations collected successfully: {len(recommendations)} recommendations",
+                            f"Recommendations collected successfully: "
+                            f"{len(recommendations)} CSP-native + "
+                            f"{advisor_count} advisor findings",
                             data_type="recommendations",
+                            details={
+                                "csp_native": len(recommendations),
+                                "advisor_findings": advisor_count,
+                            },
                         )
                         await session.commit()
             except Exception as e:
@@ -356,6 +384,44 @@ async def execute_scheduler_job(scheduler_id: str, existing_run_id: str | None =
                             f"Recommendations collection failed: {error_msg}",
                             data_type="recommendations",
                             details={"traceback": traceback.format_exc()},
+                        )
+                        await session.commit()
+
+                # Tier-2 config snapshot ingest (separate session, separate
+                # exception scope so a failure here doesn't lose the advisor
+                # findings we just persisted).
+                config_count = 0
+                try:
+                    from app.config_ingestors.service import (
+                        collect_config_snapshots_for_org,
+                    )
+                    async with async_session_factory() as session:
+                        config_count = await collect_config_snapshots_for_org(
+                            session, config.organization_id,
+                        )
+                        await session.commit()
+                except Exception as config_err:
+                    logger.warning(
+                        "Config snapshot ingest failed for org %s: %s",
+                        config.organization_id, config_err,
+                    )
+                results["recommendations"]["records"] = (
+                    results["recommendations"]["records"] + config_count
+                )
+
+                async with async_session_factory() as session:
+                    run = await session.get(SchedulerRun, run_id)
+                    if run:
+                        run.recommendations_records = (
+                            results["recommendations"]["records"]
+                        )
+                        await _log_run_event(
+                            session,
+                            run_id,
+                            LogLevel.INFO,
+                            f"Config snapshots collected: {config_count}",
+                            data_type="recommendations",
+                            details={"config_snapshots": config_count},
                         )
                         await session.commit()
 

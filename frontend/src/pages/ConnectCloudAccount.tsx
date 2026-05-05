@@ -9,6 +9,7 @@ import {
   Button,
   Form,
   Input,
+  Radio,
   Select,
   Result,
   Space,
@@ -22,10 +23,14 @@ import {
   ArrowRightOutlined,
   LinkOutlined,
   LoadingOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { CLOUD_TYPE_LABELS, CLOUD_TYPE_COLORS } from '@/utils/constants';
 import { cloudAccountsApi } from '@/api/cloudAccounts';
 import { useCurrentOrgId } from '@/hooks/useCurrentOrgId';
+import IamPolicyModal from '@/components/cloud-accounts/IamPolicyModal';
+
+type AwsAuthMode = 'keys' | 'role';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -115,12 +120,23 @@ const awsRegions = [
 
 const buildConfig = (provider: string, values: Record<string, string>): Record<string, string> => {
   switch (provider) {
-    case 'aws_cnr':
+    case 'aws_cnr': {
+      // Role-based auth (recommended) — assume-role with optional ExternalId.
+      // Static keys remain supported for self-hosted users without an
+      // sts:AssumeRole-capable identity.
+      if (values.awsAuthMode === 'role') {
+        return {
+          role_arn: values.roleArn,
+          external_id: values.externalId || '',
+          region: values.region,
+        };
+      }
       return {
         access_key_id: values.accessKeyId,
         secret_access_key: values.secretAccessKey,
         region: values.region,
       };
+    }
     case 'azure_cnr':
       return {
         tenant_id: values.tenantId,
@@ -190,6 +206,19 @@ const ConnectCloudAccount: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [form] = Form.useForm();
+  const [iamModalOpen, setIamModalOpen] = useState(false);
+  const [awsAuthMode, setAwsAuthMode] = useState<AwsAuthMode>('role');
+  // External ID used to scope the trust policy to this organization.
+  // Stable per org so the user only has to set it up once.
+  const trustExternalId = orgId ? `costpilot-${orgId}` : '';
+
+  // The principal CostPilot trusts. In a real deployment this comes from
+  // process.env or a /config endpoint; we read from Vite env if present
+  // and fall back to an empty string (which disables the CFN button and
+  // shows a "switch to role auth" hint instead).
+  const trustPrincipal = (
+    import.meta.env.VITE_COSTPILOT_AWS_PRINCIPAL_ARN as string | undefined
+  ) || '';
 
   const handleProviderSelect = (key: string) => {
     setSelectedProvider(key);
@@ -204,7 +233,13 @@ const ConnectCloudAccount: React.FC = () => {
         setSubmitting(true);
         setSubmitError(null);
 
-        const config = buildConfig(selectedProvider!, values);
+        // Inject auth-mode state for AWS so buildConfig can branch on it
+        // without making the form aware of it.
+        const enrichedValues = {
+          ...values,
+          awsAuthMode,
+        };
+        const config = buildConfig(selectedProvider!, enrichedValues);
         const accountName = values.accountName || `${CLOUD_TYPE_LABELS[selectedProvider!] || selectedProvider} Account`;
 
         await cloudAccountsApi.create(orgId, {
@@ -241,24 +276,92 @@ const ConnectCloudAccount: React.FC = () => {
       case 'aws_cnr':
         return (
           <>
-            <Form.Item
-              name="accessKeyId"
-              label="Access Key ID"
-              rules={[{ required: true, message: 'Access Key ID is required' }]}
-            >
-              <Input placeholder="AKIAIOSFODNN7EXAMPLE" />
+            <Alert
+              type="info"
+              showIcon
+              icon={<SafetyCertificateOutlined />}
+              style={{ marginBottom: 16 }}
+              message="Recommended: connect via IAM Role"
+              description={
+                <Space direction="vertical" size={4}>
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    Role-based auth uses temporary credentials and an external ID
+                    instead of long-lived access keys. Click below to see the
+                    exact IAM policy CostPilot needs.
+                  </Text>
+                  <Button
+                    size="small"
+                    icon={<SafetyCertificateOutlined />}
+                    onClick={() => setIamModalOpen(true)}
+                  >
+                    View required IAM policy
+                  </Button>
+                </Space>
+              }
+            />
+            <Form.Item label="Authentication mode">
+              <Radio.Group
+                value={awsAuthMode}
+                onChange={(e) =>
+                  setAwsAuthMode(e.target.value as AwsAuthMode)
+                }
+                optionType="button"
+                buttonStyle="solid"
+              >
+                <Radio.Button value="role">Role ARN (recommended)</Radio.Button>
+                <Radio.Button value="keys">Access keys (legacy)</Radio.Button>
+              </Radio.Group>
             </Form.Item>
-            <Form.Item
-              name="secretAccessKey"
-              label="Secret Access Key"
-              rules={[{ required: true, message: 'Secret Access Key is required' }]}
-            >
-              <Input.Password placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" />
-            </Form.Item>
+
+            {awsAuthMode === 'role' ? (
+              <>
+                <Form.Item
+                  name="roleArn"
+                  label="Role ARN"
+                  rules={[
+                    { required: true, message: 'Role ARN is required' },
+                    {
+                      pattern: /^arn:aws:iam::\d{12}:role\/.+$/,
+                      message: 'Must look like arn:aws:iam::123456789012:role/RoleName',
+                    },
+                  ]}
+                  extra="Created by the CloudFormation stack — see the IAM policy modal."
+                >
+                  <Input placeholder="arn:aws:iam::123456789012:role/CostPilotReadOnly" />
+                </Form.Item>
+                <Form.Item
+                  name="externalId"
+                  label="External ID"
+                  initialValue={trustExternalId}
+                  extra="Required by the trust policy to prevent the confused-deputy attack."
+                >
+                  <Input placeholder={trustExternalId} />
+                </Form.Item>
+              </>
+            ) : (
+              <>
+                <Form.Item
+                  name="accessKeyId"
+                  label="Access Key ID"
+                  rules={[{ required: true, message: 'Access Key ID is required' }]}
+                >
+                  <Input placeholder="AKIAIOSFODNN7EXAMPLE" />
+                </Form.Item>
+                <Form.Item
+                  name="secretAccessKey"
+                  label="Secret Access Key"
+                  rules={[{ required: true, message: 'Secret Access Key is required' }]}
+                >
+                  <Input.Password placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" />
+                </Form.Item>
+              </>
+            )}
+
             <Form.Item
               name="region"
               label="Default Region"
               rules={[{ required: true, message: 'Region is required' }]}
+              extra="Compute Optimizer will be scanned across all enabled regions; this is the bootstrap region."
             >
               <Select placeholder="Select a region">
                 {awsRegions.map((r) => (
@@ -678,6 +781,17 @@ const ConnectCloudAccount: React.FC = () => {
           />
         </Card>
       )}
+
+      {/* Mounted at the wizard root so it persists across re-renders of
+          renderProviderForm. Only meaningful for AWS today; Azure/GCP
+          forms can opt in later. */}
+      <IamPolicyModal
+        open={iamModalOpen}
+        onClose={() => setIamModalOpen(false)}
+        cloud="aws"
+        trustPrincipal={trustPrincipal}
+        externalId={trustExternalId}
+      />
     </div>
   );
 };

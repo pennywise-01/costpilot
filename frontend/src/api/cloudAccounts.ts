@@ -36,6 +36,45 @@ export interface CloudAccountCostHistory {
   cost: number;
 }
 
+export type IamTier = 'billing' | 'advisor' | 'config';
+
+export interface AwsPolicyDocument {
+  Version: string;
+  Statement: Array<{
+    Sid?: string;
+    Effect: string;
+    Action: string[];
+    Resource: string;
+  }>;
+}
+
+export interface AwsTrustPolicyDocument {
+  Version: string;
+  Statement: Array<{
+    Effect: string;
+    Principal: { AWS: string };
+    Action: string;
+    Condition?: { StringEquals?: { 'sts:ExternalId'?: string } };
+  }>;
+}
+
+export interface AwsPolicyBundle {
+  Policy: AwsPolicyDocument;
+  TrustPolicy: AwsTrustPolicyDocument;
+}
+
+export interface AzureGcpPolicy {
+  cloud: 'azure' | 'gcp';
+  roles: string[];
+  instructions: string;
+}
+
+export interface IamPolicyResponse {
+  cloud: string;
+  tiers: IamTier[];
+  policy: AwsPolicyDocument | AwsPolicyBundle | AzureGcpPolicy;
+}
+
 export const cloudAccountsApi = {
   /**
    * List all cloud accounts (DB data only, no live cloud API calls)
@@ -82,4 +121,23 @@ export const cloudAccountsApi = {
    */
   getCostHistory: (id: string, days = 30) =>
     apiClient.get<CloudAccountCostHistory[]>(`/cloud-accounts/${id}/cost-history`, { params: { days } }),
+
+  /**
+   * Generate the IAM policy JSON CostPilot needs on a cloud account.
+   * Used by the onboarding wizard's "View required IAM policy" button.
+   */
+  getIamPolicy: (params: {
+    cloud: 'aws' | 'azure' | 'gcp';
+    tiers: IamTier[];
+    trust_principal?: string;
+    external_id?: string;
+  }) =>
+    apiClient.get<IamPolicyResponse>('/cloud-accounts/iam-policy', {
+      params: {
+        cloud: params.cloud,
+        tiers: params.tiers.join(','),
+        trust_principal: params.trust_principal,
+        external_id: params.external_id,
+      },
+    }),
 };

@@ -1,0 +1,165 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CostPilot read-only role. Creates an IAM role that CostPilot's backend
+  can sts:AssumeRole into, scoped by the ExternalId parameter to prevent
+  the confused-deputy problem. The attached inline policy grants
+  read-only access for the selected data-source tiers:
+
+    - billing: cost/usage + basic resource describe (always enabled)
+    - advisor: Compute Optimizer, Trusted Advisor, Cost Optimization Hub
+    - config:  resource state + IAM + security group inspection
+
+  This template is kept in lock-step with
+  `backend/app/cloud_accounts/iam_policies.py`. The unit test
+  `test_cfn_template_actions_match_iam_policies` fails the build if the
+  action lists drift.
+
+Parameters:
+  TrustPrincipal:
+    Type: String
+    Description: >
+      AWS principal CostPilot assumes roles AS (e.g. the IAM role ARN
+      of CostPilot's EKS pod / EC2 instance, or an AWS account root ARN
+      for the CostPilot SaaS deployment). Paste the value shown in the
+      CostPilot onboarding wizard.
+    AllowedPattern: '^arn:aws:iam::\d{12}:(root|role/.+|user/.+)$'
+    ConstraintDescription: Must be a valid IAM principal ARN.
+
+  ExternalId:
+    Type: String
+    Description: >
+      Random identifier required on sts:AssumeRole — copy the value
+      shown in the CostPilot onboarding wizard (typically
+      "costpilot-<your-org-id>").
+    MinLength: 6
+    MaxLength: 128
+    AllowedPattern: '^[A-Za-z0-9_\-:/]+$'
+
+  Tiers:
+    Type: CommaDelimitedList
+    Default: 'billing,advisor'
+    Description: >
+      Which data-source tiers to grant. Must be a subset of
+      "billing,advisor,config". Billing is always granted.
+
+  RoleName:
+    Type: String
+    Default: CostPilotReadOnly
+    Description: Name of the IAM role created in your account.
+    AllowedPattern: '^[A-Za-z0-9+=,.@_-]{1,64}$'
+
+Conditions:
+  EnableAdvisor: !Not [!Equals [!Join [',', !Ref Tiers], 'billing']]
+  EnableConfig:  !Equals [!Select [0, !Split ['config', !Join [',', !Ref Tiers]]], !Join [',', !Ref Tiers]]
+  # ^ `EnableConfig` is a kludgy way to check "does the Tiers list contain
+  # 'config'?" in raw CFN. A true substring check isn't native; this
+  # compares "split on 'config'" to the original string — they differ
+  # iff 'config' appears. Simple and template-safe.
+  # Invert: different means config IS present.
+  HasConfigTier: !Not [!Condition EnableConfig]
+
+Resources:
+  CostPilotReadOnlyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Description: >
+        Read-only role used by CostPilot for cost, advisor, and
+        (optionally) configuration data. Scoped via ExternalId.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Ref TrustPrincipal
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref ExternalId
+      MaxSessionDuration: 3600
+      Policies:
+        # Billing tier — always granted.
+        - PolicyName: CostPilotBilling
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ce:GetCostAndUsage
+                  - ce:GetCostForecast
+                  - ec2:DescribeInstances
+                  - ec2:DescribeRegions
+                  - ec2:DescribeVolumes
+                  - rds:DescribeDBInstances
+                  - lambda:ListFunctions
+                  - s3:ListAllMyBuckets
+                  - sts:GetCallerIdentity
+                Resource: '*'
+
+  CostPilotAdvisorPolicy:
+    Type: AWS::IAM::Policy
+    Condition: EnableAdvisor
+    Properties:
+      PolicyName: CostPilotAdvisor
+      Roles: [!Ref CostPilotReadOnlyRole]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - compute-optimizer:GetEC2InstanceRecommendations
+              - compute-optimizer:GetEBSVolumeRecommendations
+              - compute-optimizer:GetLambdaFunctionRecommendations
+              - compute-optimizer:GetAutoScalingGroupRecommendations
+              - compute-optimizer:GetRecommendationSummaries
+              - compute-optimizer:GetEnrollmentStatus
+              - support:DescribeTrustedAdvisorChecks
+              - support:DescribeTrustedAdvisorCheckResult
+              - support:DescribeTrustedAdvisorCheckSummaries
+              - cost-optimization-hub:ListRecommendations
+              - cost-optimization-hub:GetRecommendation
+            Resource: '*'
+
+  CostPilotConfigPolicy:
+    Type: AWS::IAM::Policy
+    Condition: HasConfigTier
+    Properties:
+      PolicyName: CostPilotConfig
+      Roles: [!Ref CostPilotReadOnlyRole]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - config:DescribeConfigRules
+              - config:SelectResourceConfig
+              - config:SelectAggregateResourceConfig
+              - iam:ListUsers
+              - iam:ListAccessKeys
+              - iam:ListMFADevices
+              - iam:GetAccountPasswordPolicy
+              - iam:GenerateCredentialReport
+              - iam:GetCredentialReport
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeNetworkInterfaces
+              - s3:GetBucketPolicyStatus
+              - s3:GetBucketPublicAccessBlock
+              - s3:GetBucketEncryption
+              - rds:DescribeDBSnapshots
+              - ebs:ListSnapshots
+            Resource: '*'
+
+Outputs:
+  RoleArn:
+    Description: Paste this into the CostPilot onboarding wizard's "Role ARN" field.
+    Value: !GetAtt CostPilotReadOnlyRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-RoleArn'
+
+  RoleNameOut:
+    Description: Name of the role created.
+    Value: !Ref CostPilotReadOnlyRole
+
+  ExternalIdOut:
+    Description: External ID required on assume-role calls. Must match CostPilot config.
+    Value: !Ref ExternalId

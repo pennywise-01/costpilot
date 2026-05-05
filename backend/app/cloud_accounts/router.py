@@ -19,6 +19,8 @@ from app.cloud_accounts.schemas import (
     CloudAccountDetail,
     PaginatedCloudAccounts,
 )
+from app.cloud_accounts.iam_policies import build_policy, VALID_TIERS
+from app.shared.exceptions import BadRequestError
 from app.cloud_accounts.service import (
     create_cloud_account,
     list_cloud_accounts,
@@ -118,6 +120,59 @@ async def _build_cost_fallback_from_history(cloud_account: CloudAccount, resourc
         "forecast": forecast,
         "last_month_cost": 0.0,
         "resources_count": resources_count,
+    }
+
+
+@router.get("/cloud-accounts/iam-policy")
+async def get_iam_policy(
+    cloud: str = Query(..., description="Cloud: aws | azure | gcp"),
+    tiers: str = Query(
+        "billing,advisor",
+        description=(
+            "Comma-separated data-source tiers to include: billing, "
+            "advisor, config. Advisor unlocks Tier-1 built-in rules; "
+            "config is forward-compatible with Tier-2."
+        ),
+    ),
+    trust_principal: str | None = Query(
+        None,
+        description=(
+            "AWS only. When supplied, the response also includes a "
+            "TrustPolicy doc that allows this principal to sts:AssumeRole "
+            "into the customer-created read-only role."
+        ),
+    ),
+    external_id: str | None = Query(
+        None,
+        description="AWS only. ExternalId to require on sts:AssumeRole.",
+    ),
+    current_user: User = Depends(get_current_user),
+):
+    """Return the IAM policy document CostPilot needs on a cloud account.
+
+    The returned document is suitable for paste into the AWS IAM
+    console (or equivalent Azure/GCP UI). Used by the onboarding
+    wizard's "View required IAM policy" button.
+    """
+    tier_list = [t.strip() for t in tiers.split(",") if t.strip()]
+    invalid = [t for t in tier_list if t not in VALID_TIERS]
+    if invalid:
+        raise BadRequestError(
+            f"Unknown tier(s): {invalid}. Valid: {sorted(VALID_TIERS)}"
+        )
+    try:
+        policy = build_policy(
+            cloud=cloud,
+            tiers=tier_list,
+            trust_principal=trust_principal,
+            external_id=external_id,
+        )
+    except ValueError as e:
+        raise BadRequestError(str(e))
+    return {
+        "cloud": cloud,
+        "tiers": tier_list,
+        "policy": policy,
     }
 
 

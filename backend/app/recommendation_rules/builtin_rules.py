@@ -18,16 +18,24 @@ _BUILTIN_CREATED_AT = datetime(2024, 1, 1, tzinfo=timezone.utc)
 
 # Data sources the rule needs to actually evaluate findings.
 #   "billing" - derivable from BigQuery / CUR / Cost Mgmt billing exports.
-#   "metrics" - needs utilization telemetry (CloudWatch / Azure Monitor /
-#               Cloud Monitoring).
+#   "advisor" - satisfied by provider advisor APIs (AWS Compute Optimizer /
+#               Trusted Advisor, Azure Advisor, GCP Recommender). The
+#               provider has already pre-scored idle/over-provisioned
+#               resources; we ingest the findings rather than crawl raw
+#               CloudWatch / Azure Monitor / Cloud Monitoring.
 #   "config"  - needs resource state / IAM / security APIs (Config, Resource
 #               Graph, Asset Inventory, IAM, security groups).
 DATA_SOURCE_BILLING = "billing"
-DATA_SOURCE_METRICS = "metrics"
+DATA_SOURCE_ADVISOR = "advisor"
 DATA_SOURCE_CONFIG = "config"
 
 # Data sources currently wired up. Update when new ingestors ship.
-AVAILABLE_DATA_SOURCES: set[str] = {DATA_SOURCE_BILLING}
+# - billing: cost-cache pipeline persists BigQuery / CUR / Cost Mgmt rows.
+# - advisor: advisor ingestors persist rows in the `advisor_findings` table
+#            (see app/advisor_findings/).
+# - config:  config ingestors persist rows in the `resource_config_snapshots`
+#            table (see app/config_ingestors/).
+AVAILABLE_DATA_SOURCES: set[str] = {DATA_SOURCE_BILLING, DATA_SOURCE_ADVISOR, DATA_SOURCE_CONFIG}
 
 
 def _rule(
@@ -75,7 +83,7 @@ _COST_RULES: list[dict] = [
         "Stop or terminate consistently idle instances after confirming with the workload owner. Snapshot critical disks before deletion.",
         SavingType.PERCENTAGE,
         100,
-        data_source=DATA_SOURCE_METRICS,
+        data_source=DATA_SOURCE_ADVISOR,
     ),
     _rule(
         2,
@@ -108,7 +116,7 @@ _COST_RULES: list[dict] = [
         "Use the cloud-native rightsizing recommender or load tests to move workloads to a smaller SKU.",
         SavingType.PERCENTAGE,
         40,
-        data_source=DATA_SOURCE_METRICS,
+        data_source=DATA_SOURCE_ADVISOR,
     ),
     _rule(
         5,
@@ -130,7 +138,7 @@ _COST_RULES: list[dict] = [
         "Remove load balancers with no active targets and no traffic for 7+ days.",
         SavingType.PERCENTAGE,
         100,
-        data_source=DATA_SOURCE_METRICS,
+        data_source=DATA_SOURCE_ADVISOR,
     ),
     _rule(
         7,
@@ -323,7 +331,7 @@ _PERFORMANCE_RULES: list[dict] = [
         RecommendationSeverity.HIGH,
         "Instances running with sustained CPU above 90% for 1+ hour daily are throttling workloads and degrade p99 latency.",
         "Scale up the instance family or scale out horizontally to keep peak CPU below 80%.",
-        data_source=DATA_SOURCE_METRICS,
+        data_source=DATA_SOURCE_ADVISOR,
     ),
     _rule(
         26,
@@ -352,7 +360,7 @@ _PERFORMANCE_RULES: list[dict] = [
         RecommendationSeverity.MEDIUM,
         "Databases with >70% CPU whose workload is >80% reads can offload traffic to read replicas, improving latency and primary stability.",
         "Provision read replicas and route analytical / read-mostly queries to them.",
-        data_source=DATA_SOURCE_METRICS,
+        data_source=DATA_SOURCE_ADVISOR,
     ),
     _rule(
         29,
@@ -361,7 +369,7 @@ _PERFORMANCE_RULES: list[dict] = [
         RecommendationSeverity.MEDIUM,
         "When instance egress is near the published NIC cap, packet-drop and tail latency spike. The instance family, not the application, is the bottleneck.",
         "Upgrade to instance families with higher networking performance or enable placement groups.",
-        data_source=DATA_SOURCE_METRICS,
+        data_source=DATA_SOURCE_ADVISOR,
     ),
     _rule(
         30,
@@ -379,7 +387,7 @@ _PERFORMANCE_RULES: list[dict] = [
         RecommendationSeverity.MEDIUM,
         "Databases running on burst-based storage (gp2, Standard HDD) whose credit balance routinely hits zero experience steep I/O throttling.",
         "Upgrade to provisioned-IOPS (io2, Premium SSD, Hyperdisk) when baseline IOPS consistently exceeds the burst budget.",
-        data_source=DATA_SOURCE_METRICS,
+        data_source=DATA_SOURCE_ADVISOR,
     ),
     _rule(
         32,
@@ -388,7 +396,7 @@ _PERFORMANCE_RULES: list[dict] = [
         RecommendationSeverity.MEDIUM,
         "Endpoints whose top queries repeat on small key sets benefit from a managed Redis / Memcached tier, cutting DB load and tail latency.",
         "Add a managed cache (ElastiCache, Azure Cache for Redis, Memorystore) in front of hot read paths.",
-        data_source=DATA_SOURCE_METRICS,
+        data_source=DATA_SOURCE_ADVISOR,
     ),
 ]
 

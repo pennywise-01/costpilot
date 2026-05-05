@@ -51,6 +51,8 @@ from app.scheduler.executor import init_scheduler, load_schedulers_from_db, shut
 from app.user_management.router import router as user_management_router
 from app.enterprise.modules.export.router import router as export_router
 from app.dashboards.router import router as dashboards_router
+from app.advisor_findings.router import router as advisor_findings_router
+from app.config_ingestors.router import router as config_snapshots_router
 
 # Import all models so Base.metadata knows about them
 from app.auth.models import User  # noqa: F401
@@ -73,6 +75,7 @@ from app.enterprise.modules.export.models import (  # noqa: F401
 from app.dashboards.models import Dashboard  # noqa: F401
 from app.security.models import AuditLog, SecurityAlert  # noqa: F401
 from app.idempotency.models import IdempotencyKey  # noqa: F401
+from app.advisor_findings.models import AdvisorFinding  # noqa: F401
 
 
 class CorrelationIdMiddleware:
@@ -294,6 +297,8 @@ app.include_router(scheduler_router, prefix="/api/v1", tags=["Scheduler"])
 app.include_router(user_management_router, prefix="/api/v1", tags=["User Management"])
 app.include_router(export_router, prefix="/api/v1/enterprise", tags=["Data Export"])
 app.include_router(dashboards_router, prefix="/api/v1", tags=["Dashboards"])
+app.include_router(advisor_findings_router, prefix="/api/v1", tags=["Advisor Findings"])
+app.include_router(config_snapshots_router, prefix="/api/v1", tags=["Config Snapshots"])
 app.include_router(feature_flags_router, prefix="/api/v1", tags=["Feature Flags"])
 
 # Metrics router (no prefix - /metrics at root)

@@ -39,6 +39,12 @@ def _sanitize_csp_error(error: Exception) -> str:
 class AWSAdapter(CloudAdapter):
     """Adapter for AWS cloud accounts using boto3."""
 
+    # Actions we actively exercise during validate_credentials. The full,
+    # documented policy (including Compute Optimizer / Trusted Advisor /
+    # Cost Optimization Hub / Config) lives in
+    # `app.cloud_accounts.iam_policies.AWS_*_ACTIONS` and is what the
+    # onboarding UI shows to users. This list is kept narrow so preflight
+    # latency stays bounded.
     MINIMUM_PERMISSIONS = [
         "ce:GetCostAndUsage",
         "ce:GetCostForecast",
@@ -47,36 +53,95 @@ class AWSAdapter(CloudAdapter):
         "rds:DescribeDBInstances",
         "lambda:ListFunctions",
         "s3:ListAllMyBuckets",
+        "compute-optimizer:GetEnrollmentStatus",
     ]
 
     def __init__(self, config: dict):
         """Initialize with decrypted config containing AWS credentials.
 
-        Expected config keys:
-        - access_key_id: AWS access key ID
-        - secret_access_key: AWS secret access key
-        - region: Default AWS region (optional, defaults to us-east-1)
+        Two auth modes are supported:
+
+        1. **Static keys** (legacy) — pass `access_key_id` and
+           `secret_access_key` in `config`.
+        2. **Assume-role** (recommended) — pass `role_arn` plus an
+           `external_id` for confused-deputy protection. The underlying
+           identity (CostPilot's process credentials, typically from an
+           instance role / IRSA) must have `sts:AssumeRole` permission on
+           the target role. Optional `role_session_name` controls the
+           CloudTrail session label (default: `CostPilot`).
+
+        Other keys:
+        - region: default AWS region (defaults to us-east-1)
+        - account_id: cached account id (filled in by validate_credentials)
         """
         self.access_key_id = config.get("access_key_id", "")
         self.secret_access_key = config.get("secret_access_key", "")
+        self.role_arn = config.get("role_arn", "")
+        self.external_id = config.get("external_id", "")
+        self.role_session_name = config.get("role_session_name", "CostPilot")
         self.region = config.get("region", "us-east-1")
         self.account_id = config.get("account_id", "")
         self._permission_warnings: list[str] = []
         self._session: boto3.Session | None = None
         self._client_cache: dict[str, Any] = {}
 
-        if not self.access_key_id or not self.secret_access_key:
-            raise BadRequestError("AWS credentials (access_key_id and secret_access_key) are required")
+        has_keys = bool(self.access_key_id and self.secret_access_key)
+        has_role = bool(self.role_arn)
+        if not has_keys and not has_role:
+            raise BadRequestError(
+                "AWS credentials required: supply either "
+                "(access_key_id + secret_access_key) or role_arn"
+            )
 
     def _get_session(self) -> boto3.Session:
-        """Create or return cached boto3 session with the stored credentials."""
-        if self._session is None:
+        """Create or return cached boto3 session.
+
+        When `role_arn` is set we mint temporary credentials via
+        `sts:AssumeRole` and wrap them in a new session. Otherwise we
+        fall back to the static access-key pair.
+        """
+        if self._session is not None:
+            return self._session
+
+        if self.role_arn:
+            self._session = self._assume_role_session()
+        else:
             self._session = boto3.Session(
                 aws_access_key_id=self.access_key_id,
                 aws_secret_access_key=self.secret_access_key,
                 region_name=self.region,
             )
         return self._session
+
+    def _assume_role_session(self) -> boto3.Session:
+        """Assume `self.role_arn` and return a session using the temp creds."""
+        # Bootstrap session — uses static keys if supplied, otherwise the
+        # process's default credential chain (instance profile / IRSA / etc.)
+        if self.access_key_id and self.secret_access_key:
+            bootstrap = boto3.Session(
+                aws_access_key_id=self.access_key_id,
+                aws_secret_access_key=self.secret_access_key,
+                region_name=self.region,
+            )
+        else:
+            bootstrap = boto3.Session(region_name=self.region)
+
+        sts = bootstrap.client("sts")
+        assume_args: dict[str, Any] = {
+            "RoleArn": self.role_arn,
+            "RoleSessionName": self.role_session_name,
+            "DurationSeconds": 3600,
+        }
+        if self.external_id:
+            assume_args["ExternalId"] = self.external_id
+        resp = sts.assume_role(**assume_args)
+        creds = resp["Credentials"]
+        return boto3.Session(
+            aws_access_key_id=creds["AccessKeyId"],
+            aws_secret_access_key=creds["SecretAccessKey"],
+            aws_session_token=creds["SessionToken"],
+            region_name=self.region,
+        )
 
     def _get_client(self, service: str, region: str | None = None):
         """Get a cached boto3 client for the specified service and region."""
@@ -146,11 +211,28 @@ class AWSAdapter(CloudAdapter):
                 elif perm == "s3:ListAllMyBuckets":
                     s3 = self._get_client("s3")
                     s3.list_buckets()
+                elif perm == "compute-optimizer:GetEnrollmentStatus":
+                    # Both a permission check and an enrollment probe.
+                    # Missing IAM -> AccessDenied -> added to `missing`.
+                    # Enrollment != Active -> emitted as a warning string
+                    # so the UI can prompt the user to opt in without
+                    # blocking onboarding.
+                    co = self._get_client("compute-optimizer")
+                    resp = co.get_enrollment_status()
+                    status = resp.get("status", "Unknown")
+                    if status != "Active":
+                        missing.append(
+                            f"compute-optimizer:NotEnrolled ({status}) "
+                            f"- run `aws compute-optimizer "
+                            f"update-enrollment-status --status Active` or "
+                            f"enable it in the AWS Console."
+                        )
             except ClientError as e:
                 error_code = e.response.get("Error", {}).get("Code", "")
-                if error_code in ("AccessDenied", "UnauthorizedOperation"):
+                if error_code in ("AccessDenied", "UnauthorizedOperation", "AccessDeniedException"):
                     missing.append(perm)
-                # DryRunSuccessful means permission exists
+                # DryRunSuccessful means permission exists; OptInRequired
+                # for compute-optimizer is surfaced via the enrollment path above.
             except Exception:
                 # Other errors don't necessarily mean missing permissions
                 pass

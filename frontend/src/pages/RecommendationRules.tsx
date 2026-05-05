@@ -58,12 +58,12 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const DATA_SOURCE_LABELS: Record<string, string> = {
   billing: 'Billing',
-  metrics: 'Metrics',
+  advisor: 'Advisor',
   config: 'Config',
 };
 
 // Keep in sync with backend AVAILABLE_DATA_SOURCES in builtin_rules.py
-const AVAILABLE_DATA_SOURCES = new Set(['billing']);
+const AVAILABLE_DATA_SOURCES = new Set(['billing', 'advisor', 'config']);
 
 const CONDITION_TYPE_OPTIONS = [
   { value: 'name_is', label: 'Name is' },
