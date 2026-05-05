@@ -1,4 +1,17 @@
-"""Graceful degradation strategies for fault tolerance."""
+"""Graceful degradation strategies for fault tolerance.
+
+ARCHITECTURE NOTE: This module uses deferred (in-function) imports to reach
+into domain service modules (expenses, resources, cost_cache, recommendations).
+This is an intentional upward import from the shared package into domain
+modules. The deferred imports prevent circular dependencies at module load
+time, but they create a hidden dependency graph that static analysis tools
+cannot detect.
+
+The fallback chain pattern is: try live → try cache → return degraded.
+Each layer has its own try/except. Callers MUST inspect the returned
+``data_source`` ("live", "cached", "stale", "unavailable") and
+``freshness_seconds`` tuple values to understand what happened.
+"""
 
 from typing import TypeVar, Callable, Optional, Any, Protocol
 from functools import wraps
@@ -306,9 +319,9 @@ async def get_resources_with_fallback(
 
     # Try cache - resources service has internal cache
     try:
-        from app.resources.service import _get_cached_resources
+        from app.resources.service import get_cached_resources
 
-        cached = _get_cached_resources(org_id)
+        cached = get_cached_resources(org_id)
         if cached is not None:
             from app.resources.schemas import ResourceListResponse
 

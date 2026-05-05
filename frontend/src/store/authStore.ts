@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@/api/auth';
-import { useOrgStore } from '@/store/orgStore';
 
 interface AuthState {
   token: string | null;
@@ -18,21 +17,12 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       setAuth: (_token, user) => {
-        const previousUserId = get().user?.id ?? null;
-        if (previousUserId !== user.id) {
-          useOrgStore.getState().clearOrg();
-        }
         set({ token: null, user });
       },
       setUser: (user) => {
-        const previousUserId = get().user?.id ?? null;
-        if (previousUserId !== user.id) {
-          useOrgStore.getState().clearOrg();
-        }
         set({ user });
       },
       logout: () => {
-        useOrgStore.getState().clearOrg();
         set({ token: null, user: null });
       },
       isAuthenticated: () => !!get().user,

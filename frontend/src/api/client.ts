@@ -3,6 +3,10 @@ import { useAuthStore } from '@/store/authStore';
 import { useOrgStore } from '@/store/orgStore';
 import { getFingerprintHash, verifyFingerprint } from '@/utils/fingerprint';
 
+const logger = {
+  warn: (...args: unknown[]) => console.warn('[api-client]', ...args),
+};
+
 const apiClient = axios.create({
   baseURL: '/api/v1',
   headers: { 'Content-Type': 'application/json' },
@@ -33,6 +37,7 @@ apiClient.interceptors.response.use(
         url.startsWith('/auth/forgot-password') ||
         url.startsWith('/auth/reset-password');
       if (!isAuthEndpoint) {
+        logger.warn('401 received, logging out. URL:', url);
         useAuthStore.getState().logout();
         window.location.href = '/login';
       }
@@ -44,6 +49,7 @@ apiClient.interceptors.response.use(
       typeof detail === 'string' &&
       detail.toLowerCase().includes('not a member of this organization')
     ) {
+      logger.warn('403 org membership error, clearing org. Detail:', detail);
       useOrgStore.getState().clearOrg();
       if (window.location.pathname !== '/') {
         window.location.href = '/';

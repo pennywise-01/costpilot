@@ -1,5 +1,6 @@
 """Field-level encryption for sensitive data."""
 
+import logging
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -8,6 +9,8 @@ import json
 from typing import Any, Optional
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class FieldEncryption:
@@ -130,6 +133,7 @@ def get_field_encryption() -> FieldEncryption:
     global _field_encryption
     if _field_encryption is None:
         _field_encryption = FieldEncryption()
+        logger.info("FieldEncryption singleton initialized")
     return _field_encryption
 
 

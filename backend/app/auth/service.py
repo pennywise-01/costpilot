@@ -201,19 +201,8 @@ async def revoke_session_binding(session_id: str) -> None:
     await r.delete(_session_storage_key(session_id))
 
 
-def hash_password(password: str) -> str:
-    salt = secrets.token_hex(16)
-    hashed = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000).hex()
-    return f"{salt}${hashed}"
-
-
-def verify_password(plain: str, hashed: str) -> bool:
-    try:
-        salt, stored_hash = hashed.split("$", 1)
-        computed = hashlib.pbkdf2_hmac("sha256", plain.encode(), salt.encode(), 100_000).hex()
-        return secrets.compare_digest(computed, stored_hash)
-    except (ValueError, AttributeError):
-        return False
+# Re-export from shared utility for backward compatibility
+from app.shared.password import hash_password, verify_password  # noqa: E402
 
 
 def _session_binding_hash(session_id: str) -> str:

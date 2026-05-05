@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useAuthStore } from '@/store/authStore';
 
 export interface OrgWithRole {
   id: string;
@@ -34,3 +35,14 @@ export const useOrgStore = create<OrgState>()(
     }
   )
 );
+
+// Subscribe to auth changes: clear org state when user logs out or changes.
+// This replaces the direct cross-store calls that were previously in authStore.
+let _lastUserId: string | null = null;
+useAuthStore.subscribe((state) => {
+  const currentUserId = state.user?.id ?? null;
+  if (_lastUserId !== null && currentUserId !== _lastUserId) {
+    useOrgStore.getState().clearOrg();
+  }
+  _lastUserId = currentUserId;
+});

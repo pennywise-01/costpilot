@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.models import User
-from app.auth.service import hash_password
+from app.shared.password import hash_password
 from app.enterprise.modules.rbac.models import Role, UserRoleAssignment
 from app.enterprise.modules.rbac.service import (
     assign_role as rbac_assign_role,

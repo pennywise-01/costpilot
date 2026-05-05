@@ -105,15 +105,8 @@ async def _fetch_recommendations_overview(db: AsyncSession, org_id: str) -> dict
 
 
 async def _fetch_cloud_accounts(db: AsyncSession, org_id: str) -> dict:
-    from sqlalchemy import select
-    from app.cloud_accounts.models import CloudAccount
-    result = await db.execute(
-        select(CloudAccount).where(
-            CloudAccount.organization_id == org_id,
-            CloudAccount.deleted_at.is_(None),
-        )
-    )
-    accounts = list(result.scalars().all())
+    from app.cloud_accounts.service import list_cloud_accounts
+    accounts, count = await list_cloud_accounts(db, org_id, limit=500)
     return {
         "accounts": [
             {
@@ -124,20 +117,13 @@ async def _fetch_cloud_accounts(db: AsyncSession, org_id: str) -> dict:
             }
             for a in accounts
         ],
-        "count": len(accounts),
+        "count": count,
     }
 
 
 async def _fetch_pools(db: AsyncSession, org_id: str) -> dict:
-    from sqlalchemy import select
-    from app.pools.models import Pool
-    result = await db.execute(
-        select(Pool).where(
-            Pool.organization_id == org_id,
-            Pool.deleted_at.is_(None),
-        )
-    )
-    pools = list(result.scalars().all())
+    from app.pools.service import get_pool_tree
+    pools = await get_pool_tree(db, org_id)
     return {
         "pools": [
             {
@@ -153,24 +139,22 @@ async def _fetch_pools(db: AsyncSession, org_id: str) -> dict:
 
 
 async def _fetch_budget(db: AsyncSession, org_id: str) -> dict:
-    from sqlalchemy import select
     from app.cost_cache.service import get_cached_summary
-    from app.organizations.models import Organization
-    from app.pools.models import Pool
+    from app.organizations.service import get_organization
+    from app.pools.service import get_pool_tree
 
-    # Get budget from org's root pool
-    org_result = await db.execute(
-        select(Organization).where(Organization.id == org_id)
-    )
-    org = org_result.scalar_one_or_none()
-    budget = 0.0
-    if org and org.pool_id:
-        pool_result = await db.execute(
-            select(Pool).where(Pool.id == org.pool_id)
-        )
-        pool = pool_result.scalar_one_or_none()
-        if pool:
-            budget = float(pool.limit)
+    # Get budget from org's root pool via service layer
+    try:
+        org = await get_organization(db, org_id)
+        budget = 0.0
+        if org.pool_id:
+            pools = await get_pool_tree(db, org_id)
+            for p in pools:
+                if p.id == org.pool_id:
+                    budget = float(p.limit)
+                    break
+    except Exception:
+        budget = 0.0
 
     # Get current spend from cache
     summary = await get_cached_summary(db, org_id, allow_stale=True)

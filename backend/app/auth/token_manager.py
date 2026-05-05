@@ -119,7 +119,8 @@ class SecureTokenManager:
         import ast
         try:
             stored_data = ast.literal_eval(stored.decode() if isinstance(stored, bytes) else stored)
-        except:
+        except (ValueError, SyntaxError) as exc:
+            logger.warning("Corrupted token data for key %s: %s", key, exc)
             raise TokenRotationError("Corrupted token data")
 
         # Check if token was already used
@@ -174,8 +175,8 @@ class SecureTokenManager:
                         if data.get("user_id") == user_id:
                             await self.redis.delete(key)
                             revoked += 1
-                    except:
-                        pass
+                    except (ValueError, SyntaxError) as exc:
+                        logger.warning("Failed to parse token data for key %s during revoke: %s", key, exc)
 
             if cursor == 0:
                 break
@@ -206,8 +207,8 @@ class SecureTokenManager:
                         if data.get("session_id") == session_id:
                             await self.redis.delete(key)
                             return True
-                    except:
-                        pass
+                    except (ValueError, SyntaxError) as exc:
+                        logger.warning("Failed to parse token data for key %s during session revoke: %s", key, exc)
 
             if cursor == 0:
                 break

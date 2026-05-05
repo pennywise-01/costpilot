@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 # Bounded TTL caches for live cloud account data and permission warnings
 _live_data_cache: TTLCache = TTLCache(maxsize=500, ttl=300)  # 5 minutes
 _permission_cache: TTLCache = TTLCache(maxsize=500, ttl=3600)  # 1 hour
+logger.info("Initialized cloud_accounts caches: live_data(max=500,ttl=300s), permissions(max=500,ttl=3600s)")
 
 
 async def _build_response_with_permissions(cloud_account: CloudAccount) -> dict:
@@ -55,6 +56,7 @@ async def _build_response_with_permissions(cloud_account: CloudAccount) -> dict:
 
     # Check permission cache
     if account_id in _permission_cache:
+        logger.debug("Permission cache hit for account %s", account_id)
         warnings = _permission_cache[account_id]
         base = CloudAccountResponse.model_validate(cloud_account).model_dump()
         base["permission_warnings"] = warnings

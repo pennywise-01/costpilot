@@ -1,3 +1,4 @@
+import logging
 import secrets
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -34,6 +35,7 @@ from app.auth.rate_limit import auth_limiter
 from app.shared.enums import RolePurpose
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 _COOKIE_NAME = "access_token"
 _SESSION_COOKIE_NAME = "session_id"
@@ -192,8 +194,8 @@ async def forgot_password(data: ForgotPasswordRequest):
         html_body = _wrap_html(subject, body_content)
         try:
             await send_email(data.email, subject, html_body)
-        except Exception:
-            pass  # Don't leak email-sending errors to client
+        except Exception as exc:
+            logger.warning("Failed to send password reset email to %s: %s", data.email, exc)
     return {"message": "If an account with that email exists, a reset link has been sent."}
 
 

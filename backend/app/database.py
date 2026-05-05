@@ -7,6 +7,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+
 # Database engine with connection pooling for high concurrency
 engine = create_async_engine(
     settings.DATABASE_URL,
@@ -56,6 +58,7 @@ def get_mongo_client() -> AsyncIOMotorClient:
         serverSelectionTimeoutMS=5000,
         retryWrites=True,
     )
+    logger.info("MongoDB client initialized with pool_size=%s", settings.MONGODB_MAX_POOL_SIZE)
     return _mongo_client
 
 

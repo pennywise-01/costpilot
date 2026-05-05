@@ -54,28 +54,8 @@ from app.dashboards.router import router as dashboards_router
 from app.advisor_findings.router import router as advisor_findings_router
 from app.config_ingestors.router import router as config_snapshots_router
 
-# Import all models so Base.metadata knows about them
-from app.auth.models import User  # noqa: F401
-from app.organizations.models import Organization, Employee  # noqa: F401
-from app.cloud_accounts.models import CloudAccount  # noqa: F401
-from app.pools.models import Pool, PoolPolicy  # noqa: F401
-from app.rules.models import Rule, Condition  # noqa: F401
-from app.recommendation_rules.models import RecommendationRule, RecommendationRuleCondition  # noqa: F401
-from app.notifications.models import NotificationPreference, NotificationLog  # noqa: F401
-from app.enterprise.modules.rbac.models import (  # noqa: F401
-    Role, RolePermission, UserRoleAssignment, ABACPolicy, AccessReview, SSOConfig,
-)
-from app.scheduler.models import SchedulerConfig, SchedulerRun, SchedulerLog  # noqa: F401
-from app.user_management.models import (  # noqa: F401
-    UserInvitation, UserActivityLog, UserPreferences,
-)
-from app.enterprise.modules.export.models import (  # noqa: F401
-    ExportTemplate, ExportJob, ScheduledExport,
-)
-from app.dashboards.models import Dashboard  # noqa: F401
-from app.security.models import AuditLog, SecurityAlert  # noqa: F401
-from app.idempotency.models import IdempotencyKey  # noqa: F401
-from app.advisor_findings.models import AdvisorFinding  # noqa: F401
+# Import all models so Base.metadata knows about them (single registry)
+import app.models_registry  # noqa: F401
 
 
 class CorrelationIdMiddleware:

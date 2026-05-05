@@ -9,7 +9,6 @@ from app.pools.schemas import PoolCreate, PoolUpdate, PoolPolicyCreate, PoolResp
 from app.shared.enums import PoolPurpose
 from app.shared.exceptions import NotFoundError, BadRequestError
 from app.organizations.models import Employee
-from app.expenses.service import get_expense_summary
 
 
 async def enrich_pool_with_spent_and_owner(
@@ -22,12 +21,7 @@ async def enrich_pool_with_spent_and_owner(
     # Calculate spent - for now, distribute org total based on pool hierarchy
     # In a real implementation, you'd have pool-to-cloud-account mappings
     if org_spent is None:
-        try:
-            # We need a mongo_db reference - skip expense calculation for now
-            # and return 0 for spent. The frontend can handle this gracefully.
-            spent = 0.0
-        except Exception:
-            spent = 0.0
+        spent = 0.0
     else:
         # Simple allocation: root pools get proportional share based on limit
         spent = 0.0
@@ -70,12 +64,8 @@ async def get_pool_tree_with_spent(
 
     # Try to get organization-wide spent amount
     org_spent = 0.0
-    try:
-        # This is a placeholder - in production, you'd inject mongo_db
-        # For now, we'll calculate spent from child pool limits proportionally
-        pass
-    except Exception:
-        pass
+    # TODO: Inject mongo_db dependency to calculate actual cloud spend per pool.
+    # For now, org_spent remains 0.0 and the frontend handles this gracefully.
 
     # Build a map of employees for owner lookup
     emp_result = await db.execute(

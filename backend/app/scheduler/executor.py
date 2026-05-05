@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import async_session_factory
 from app.expenses.service import get_expense_summary, get_expense_breakdown
 from app.recommendations.csp_service import fetch_csp_recommendations
-from app.resources.service import _discover_all_resources
+from app.resources.service import discover_all_resources
 from app.scheduler.enums import LogLevel, ScheduleType, SchedulerStatus, TriggerType
 from app.scheduler.models import DeadLetterJob, SchedulerConfig, SchedulerLog, SchedulerRun
 
@@ -186,13 +186,6 @@ async def execute_scheduler_job(scheduler_id: str, existing_run_id: str | None =
             session.add(run)
         await session.commit()
 
-    # Reload config to ensure we have fresh state after session close
-    async with async_session_factory() as session:
-        config = await session.get(SchedulerConfig, scheduler_id)
-        if not config:
-            logger.error(f"Scheduler config {scheduler_id} not found after session reopen")
-            return
-
     logger.info(f"Starting scheduled job {scheduler_id}, run {run_id}")
 
     # Track results
@@ -278,7 +271,7 @@ async def execute_scheduler_job(scheduler_id: str, existing_run_id: str | None =
                 run_id, LogLevel.INFO, "Starting resources collection"
             )
             try:
-                resources = await _discover_all_resources(config.organization_id)
+                resources = await discover_all_resources(config.organization_id)
                 results["resources"]["success"] = True
                 results["resources"]["records"] = len(resources)
 

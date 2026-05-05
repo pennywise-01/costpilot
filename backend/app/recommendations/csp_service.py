@@ -231,7 +231,8 @@ async def fetch_csp_recommendations(
         groups.setdefault(item.rec_type, []).append(item)
 
     # Import well-architected rules for enrichment
-    from app.recommendations.service import _WELL_ARCHITECTED_RULES
+    from app.recommendations.service import get_well_architected_rules
+    _WELL_ARCHITECTED_RULES = get_well_architected_rules()
     from app.recommendations.schemas import WellArchitectedRule
 
     results: list[RecommendationType] = []

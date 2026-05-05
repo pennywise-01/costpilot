@@ -1,7 +1,10 @@
 import hashlib
+import logging
 import random
 import time
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -833,6 +836,15 @@ def _generate_demo_items(rng: random.Random, rec_def: dict) -> list[dict]:
     return items
 
 
+def get_well_architected_rules() -> dict[str, list[dict]]:
+    """Return the well-architected rules mapping.
+
+    Public accessor so that csp_service.py does not need to import a
+    private name from this module.
+    """
+    return _WELL_ARCHITECTED_RULES
+
+
 def _build_demo_overview() -> RecommendationsOverview:
     """Pre-compute the full recommendations overview with demo data."""
     rng = random.Random(hashlib.sha256(b"costpilot-recs").hexdigest())
@@ -914,8 +926,8 @@ async def get_recommendations_overview(
             )
             account_count = count_result.scalar() or 0
             has_cloud_accounts = account_count > 0
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to check cloud account count for org %s: %s", org_id, e)
     
     # If no cloud accounts, return empty data (no recommendations)
     if not has_cloud_accounts:
@@ -954,8 +966,8 @@ async def get_recommendations_overview(
                 total_saving += rec.saving
                 total_count += rec.count
                 categories[rec.category] = categories.get(rec.category, 0) + rec.count
-        except Exception:
-            pass  # Custom rules fetch failures are non-fatal
+        except Exception as e:
+            logger.warning("Custom rule evaluation failed for org %s: %s", org_id, e)
     
     return RecommendationsOverview(
         total_saving=round(total_saving, 2),
@@ -990,8 +1002,8 @@ async def get_recommendation_by_type(
             )
             account_count = count_result.scalar() or 0
             has_cloud_accounts = account_count > 0
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to check cloud account count for org %s in get_recommendation_by_type: %s", org_id, e)
     
     # If no cloud accounts, return None (no recommendations available)
     if not has_cloud_accounts:
@@ -1006,8 +1018,8 @@ async def get_recommendation_by_type(
             for rec in csp_recs:
                 if rec.type == rec_type:
                     return rec
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to fetch CSP recommendations for org %s type %s: %s", org_id, rec_type, e)
     
     # Check custom rules
     if db is not None and rec_type.startswith("custom_rule_"):

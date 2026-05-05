@@ -28,8 +28,11 @@ _resource_cache = SyncBoundedCache(max_size=500, ttl_seconds=300, name="resource
 _resource_detail_cache = SyncBoundedCache(max_size=500, ttl_seconds=300, name="resource_details")
 
 
-def _get_cached_resources(org_id: str) -> list[ResourceResponse] | None:
-    """Get cached resources if they exist and haven't expired."""
+def get_cached_resources(org_id: str) -> list[ResourceResponse] | None:
+    """Get cached resources if they exist and haven't expired.
+
+    Public API for use by shared/degradation.py fallback chain.
+    """
     if not settings.CLOUD_CACHE_ENABLED:
         return None
     return _resource_cache.get(org_id)
@@ -114,10 +117,12 @@ async def _discover_resources_with_coalescing(
     return await coalesce_resource_discovery(_fetch)
 
 
-async def _discover_all_resources(org_id: str) -> tuple[list[ResourceResponse], list[PartialFailure]]:
+async def discover_all_resources(org_id: str) -> tuple[list[ResourceResponse], list[PartialFailure]]:
     """Discover resources from all connected cloud accounts.
 
     Returns a tuple of (resources, partial_failures).
+
+    Public API for use by scheduler/executor.py.
     """
     adapters, adapter_failures = await _get_cloud_accounts_with_adapters(org_id)
 
@@ -208,11 +213,11 @@ async def list_resources(
     partial_failures: list[PartialFailure] = []
 
     # Try to get cached resources first
-    all_resources = _get_cached_resources(org_id)
+    all_resources = get_cached_resources(org_id)
 
     if all_resources is None:
         # Cache miss - fetch from cloud providers with coalescing
-        all_resources, partial_failures = await _discover_all_resources(org_id)
+        all_resources, partial_failures = await discover_all_resources(org_id)
         # Cache the results
         _set_cached_resources(org_id, all_resources)
 
@@ -420,7 +425,7 @@ async def refresh_resources(
     await invalidate_resource_cache(org_id)
 
     # Fetch fresh data
-    all_resources, partial_failures = await _discover_all_resources(org_id)
+    all_resources, partial_failures = await discover_all_resources(org_id)
     _set_cached_resources(org_id, all_resources)
 
     has_errors = len(partial_failures) > 0

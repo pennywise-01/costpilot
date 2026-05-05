@@ -281,4 +281,5 @@ def get_credential_cache(redis_client: Optional[Any] = None) -> SecureCredential
     global _credential_cache
     if _credential_cache is None:
         _credential_cache = SecureCredentialCache(redis_client=redis_client)
+        logger.info("SecureCredentialCache singleton initialized (redis=%s)", redis_client is not None)
     return _credential_cache

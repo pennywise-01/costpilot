@@ -337,6 +337,7 @@ def get_audit_logger() -> AuditLogger:
     global _audit_logger
     if _audit_logger is None:
         _audit_logger = AuditLogger()
+        logger.info("AuditLogger singleton initialized")
     return _audit_logger
 
 
