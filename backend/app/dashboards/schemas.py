@@ -15,6 +15,9 @@ class WidgetType(str):
     TABLE = "table"
     PROGRESS_LIST = "progress_list"
     STATUS_LIST = "status_list"
+    BUDGET_GAUGE = "budget_gauge"
+    TREND_COMPARISON = "trend_comparison"
+    TAG_BREAKDOWN = "tag_breakdown"
 
 
 VALID_WIDGET_TYPES = {
@@ -26,6 +29,9 @@ VALID_WIDGET_TYPES = {
     WidgetType.TABLE,
     WidgetType.PROGRESS_LIST,
     WidgetType.STATUS_LIST,
+    WidgetType.BUDGET_GAUGE,
+    WidgetType.TREND_COMPARISON,
+    WidgetType.TAG_BREAKDOWN,
 }
 
 VALID_METRICS_BY_TYPE: dict[str, set[str]] = {
@@ -41,6 +47,9 @@ VALID_METRICS_BY_TYPE: dict[str, set[str]] = {
     WidgetType.TABLE: {"top_resources", "cloud_accounts", "recommendations"},
     WidgetType.PROGRESS_LIST: {"recommendation_categories", "pool_status"},
     WidgetType.STATUS_LIST: {"cloud_account_health"},
+    WidgetType.BUDGET_GAUGE: {"budget_vs_spend"},
+    WidgetType.TREND_COMPARISON: {"cost_comparison_by_cloud", "cost_comparison_by_service"},
+    WidgetType.TAG_BREAKDOWN: {"cost_by_tag"},
 }
 
 ALL_VALID_METRICS = set()

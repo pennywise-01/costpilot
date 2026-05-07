@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 
 # revision identifiers, used by Alembic.
-revision = '028'
+revision = '028_add_resource_config_snapshots'
 down_revision = '027'
 branch_labels = None
 depends_on = None

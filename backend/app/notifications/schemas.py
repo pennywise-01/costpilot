@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.shared.enums import NotificationType
 from app.shared.pagination import PaginatedResponse
@@ -9,6 +9,7 @@ from app.shared.pagination import PaginatedResponse
 class NotificationPrefItem(BaseModel):
     notification_type: NotificationType
     enabled: bool
+    recipients: list[str] = Field(default_factory=list, max_length=3)
 
 
 class NotificationPreferencesUpdate(BaseModel):
@@ -19,6 +20,7 @@ class NotificationPrefResponse(BaseModel):
     id: str
     notification_type: NotificationType
     enabled: bool
+    recipients: list[str] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 

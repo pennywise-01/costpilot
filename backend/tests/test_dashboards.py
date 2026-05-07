@@ -34,10 +34,9 @@ class TestWidgetConfigEntry:
 
     def test_all_widget_types_in_registry(self):
         """Every widget type in VALID_METRICS_BY_TYPE should be in VALID_WIDGET_TYPES."""
+        from app.dashboards.schemas import VALID_WIDGET_TYPES
         for wtype in VALID_METRICS_BY_TYPE:
-            assert wtype in {WidgetType.STAT_CARD, WidgetType.AREA_CHART, WidgetType.BAR_CHART,
-                            WidgetType.PIE_CHART, WidgetType.STACKED_AREA_CHART, WidgetType.TABLE,
-                            WidgetType.PROGRESS_LIST, WidgetType.STATUS_LIST}
+            assert wtype in VALID_WIDGET_TYPES
 
     def test_all_metrics_in_all_valid_metrics(self):
         """Every metric in VALID_METRICS_BY_TYPE should be in ALL_VALID_METRICS."""

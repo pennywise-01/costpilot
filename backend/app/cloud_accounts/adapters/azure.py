@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from app.cloud_accounts.adapters.base import CloudAdapter
@@ -350,62 +350,56 @@ class AzureAdapter(CloudAdapter):
         return "429" in message or "too many requests" in message
 
     async def get_monthly_cost_summary(self) -> dict[str, float]:
-        """Get this month and last month cost totals."""
+        """Get this month and last month cost totals.
+        
+        Uses a single API call spanning both months to reduce Azure API
+        call volume and avoid rate-limiting. Falls back to a daily-granularity
+        call if the monthly one fails.
+        """
         today = utc_now().date()
         first_of_month = today.replace(day=1)
         last_month_end = first_of_month - timedelta(days=1)
         last_month_start = last_month_end.replace(day=1)
         
         logger.debug(f"AzureAdapter.get_monthly_cost_summary called for subscription {self.subscription_id}")
-        logger.debug(f"Date range: this_month={first_of_month.isoformat()} to {today.isoformat()}, last_month={last_month_start.isoformat()} to {first_of_month.isoformat()}")
+        logger.debug(f"Date range: combined={last_month_start.isoformat()} to {today.isoformat()}")
         
         this_month_cost = 0.0
         last_month_cost = 0.0
 
-        # This month should be resilient: keep trying to return this value even if other calls fail.
+        # Single API call spanning both months (reduces 2-3 calls to 1)
         try:
-            logger.debug("Fetching this month data from Azure Cost Management")
-            this_month_data = await self.get_cost_and_usage(
-                start_date=first_of_month.isoformat(),
+            logger.debug("Fetching combined monthly data from Azure Cost Management")
+            combined_data = await self.get_cost_and_usage(
+                start_date=last_month_start.isoformat(),
                 end_date=today.isoformat(),
                 granularity="Monthly",
             )
             logger.debug(
-                f"This month data: columns={this_month_data.get('columns')}, rows_count={len(this_month_data.get('rows', []))}, cost_index={this_month_data.get('cost_index')}"
+                f"Combined data: columns={combined_data.get('columns')}, rows_count={len(combined_data.get('rows', []))}, cost_index={combined_data.get('cost_index')}"
             )
-            this_month_cost = self._sum_costs(this_month_data)
-        except Exception as monthly_error:
+            # Split costs by date to separate this month vs last month
+            this_month_cost, last_month_cost = self._split_monthly_costs(
+                combined_data, first_of_month
+            )
+        except Exception as combined_error:
             logger.warning(
-                "Failed to get Azure this month monthly summary, falling back to daily costs: %s",
-                monthly_error,
+                "Failed to get Azure combined monthly summary, falling back to daily: %s",
+                combined_error,
             )
-
             try:
-                this_month_daily_data = await self.get_cost_and_usage(
-                    start_date=first_of_month.isoformat(),
+                combined_daily = await self.get_cost_and_usage(
+                    start_date=last_month_start.isoformat(),
                     end_date=today.isoformat(),
                     granularity="Daily",
                 )
-                this_month_cost = self._sum_costs(this_month_daily_data)
-                logger.debug("Azure this month daily fallback cost: %s", this_month_cost)
+                this_month_cost, last_month_cost = self._split_monthly_costs(
+                    combined_daily, first_of_month
+                )
+                logger.debug("Azure daily fallback: this_month=%s, last_month=%s", this_month_cost, last_month_cost)
             except Exception as daily_fallback_error:
                 logger.error("Failed to get Azure cost summary: %s", daily_fallback_error, exc_info=True)
                 raise
-
-        # Last month is best-effort. Do not discard a successful this-month value if this call fails.
-        try:
-            logger.debug("Fetching last month data from Azure Cost Management")
-            last_month_data = await self.get_cost_and_usage(
-                start_date=last_month_start.isoformat(),
-                end_date=first_of_month.isoformat(),
-                granularity="Monthly",
-            )
-            logger.debug(
-                f"Last month data: columns={last_month_data.get('columns')}, rows_count={len(last_month_data.get('rows', []))}, cost_index={last_month_data.get('cost_index')}"
-            )
-            last_month_cost = self._sum_costs(last_month_data)
-        except Exception as e:
-            logger.warning("Failed to get Azure last month costs, defaulting to 0: %s", e)
 
         logger.debug(
             f"Azure calculated costs: this_month_cost={this_month_cost}, last_month_cost={last_month_cost}"
@@ -423,6 +417,60 @@ class AzureAdapter(CloudAdapter):
         }
         logger.debug(f"Azure returning result: {result}")
         return result
+
+    def _split_monthly_costs(
+        self, data: dict, first_of_month: date
+    ) -> tuple[float, float]:
+        """Split combined cost data into this-month and last-month totals.
+        
+        Uses the date column to determine which month each row belongs to.
+        Falls back to treating all rows as this-month if no date column exists.
+        """
+        cost_idx = data.get("cost_index")
+        date_idx = data.get("date_index")
+        rows = data.get("rows", [])
+        
+        if cost_idx is None:
+            return 0.0, 0.0
+        
+        this_month_cost = 0.0
+        last_month_cost = 0.0
+        
+        for row in rows:
+            try:
+                cost = float(row[cost_idx])
+            except (IndexError, ValueError, TypeError):
+                continue
+            
+            # Try to determine month from date column
+            if date_idx is not None and date_idx < len(row):
+                date_val = row[date_idx]
+                try:
+                    if isinstance(date_val, str):
+                        row_date = datetime.fromisoformat(date_val).date()
+                    elif isinstance(date_val, datetime):
+                        row_date = date_val.date()
+                    elif isinstance(date_val, date):
+                        row_date = date_val
+                    else:
+                        # Can't parse date — attribute to this month
+                        this_month_cost += cost
+                        continue
+                    
+                    if row_date >= first_of_month:
+                        this_month_cost += cost
+                    else:
+                        last_month_cost += cost
+                    continue
+                except (ValueError, TypeError):
+                    pass
+            
+            # No date column or unparseable — for Monthly granularity with
+            # a 2-month span, Azure typically returns 2 rows. If we can't
+            # split, attribute to this month as fallback.
+            this_month_cost += cost
+        
+        return this_month_cost, last_month_cost
 
     def _sum_costs(self, data: dict) -> float:
         """Sum costs from parsed cost data."""

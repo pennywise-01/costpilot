@@ -65,6 +65,11 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
         if len(path_parts) >= 6 and path_parts[3] == "organizations" and path_parts[5] == "expenses":
             return 90.0
 
+        # Check for /api/v1/organizations/{org_id}/dashboards pattern
+        # Batch widget data endpoint fetches from multiple data sources in parallel
+        if len(path_parts) >= 6 and path_parts[3] == "organizations" and path_parts[5] == "dashboards":
+            return 60.0
+
         # Check for /api/v1/organizations/{org_id}/resources pattern
         if len(path_parts) >= 6 and path_parts[3] == "organizations" and path_parts[5] == "resources":
             return 90.0

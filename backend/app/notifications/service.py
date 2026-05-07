@@ -57,6 +57,8 @@ async def update_preferences(
     db: AsyncSession, user_id: str, org_id: str, items: list[NotificationPrefItem]
 ) -> list[NotificationPreference]:
     """Upsert notification preferences for a user in an org."""
+    from app.notifications.models import MAX_RECIPIENTS
+
     result = await db.execute(
         select(NotificationPreference).where(
             NotificationPreference.user_id == user_id,
@@ -68,8 +70,12 @@ async def update_preferences(
 
     prefs = []
     for item in items:
+        # Validate and cap recipients
+        recipients = list(dict.fromkeys(item.recipients))[:MAX_RECIPIENTS]
+
         if item.notification_type in existing:
             existing[item.notification_type].enabled = item.enabled
+            existing[item.notification_type].recipients = recipients
             prefs.append(existing[item.notification_type])
         else:
             pref = NotificationPreference(
@@ -77,6 +83,7 @@ async def update_preferences(
                 organization_id=org_id,
                 notification_type=item.notification_type,
                 enabled=item.enabled,
+                recipients=recipients,
             )
             db.add(pref)
             prefs.append(pref)
@@ -118,10 +125,13 @@ async def send_notification(
     org_id: str,
     notification_type: NotificationType,
     data: dict,
-) -> NotificationLog:
+) -> NotificationLog | None:
     """Send a notification email to a user if they have it enabled.
 
-    Returns the NotificationLog entry.
+    If the user has custom recipients configured for this notification type,
+    emails are sent to those addresses instead of (or in addition to) the user's own email.
+
+    Returns the NotificationLog entry, or None if notification is disabled.
     """
     # Check preference
     result = await db.execute(
@@ -149,25 +159,33 @@ async def send_notification(
 
     subject, html_body = renderer(data)
 
-    log = NotificationLog(
-        user_id=user.id,
-        organization_id=org_id,
-        notification_type=notification_type,
-        recipient_email=user.email,
-        subject=subject,
-        body=html_body,
-    )
-    db.add(log)
+    # Determine recipients: custom list if configured, otherwise user's own email
+    custom_recipients = pref.recipients if pref and pref.recipients else []
+    recipients = custom_recipients if custom_recipients else [user.email]
 
-    try:
-        await send_email(user.email, subject, html_body)
-        log.sent_at = datetime.now(timezone.utc)
-    except Exception as exc:
-        logger.error("Failed to send email to %s: %s", user.email, exc)
-        log.error = str(exc)
+    last_log = None
+    for recipient_email in recipients:
+        log = NotificationLog(
+            user_id=user.id,
+            organization_id=org_id,
+            notification_type=notification_type,
+            recipient_email=recipient_email,
+            subject=subject,
+            body=html_body,
+        )
+        db.add(log)
+
+        try:
+            await send_email(recipient_email, subject, html_body)
+            log.sent_at = datetime.now(timezone.utc)
+        except Exception as exc:
+            logger.error("Failed to send email to %s: %s", recipient_email, exc)
+            log.error = str(exc)
+
+        last_log = log
 
     await db.flush()
-    return log
+    return last_log
 
 
 async def check_preferences_for_users(

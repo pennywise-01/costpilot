@@ -1,164 +1,272 @@
-2026-04-21 17:15:26.748 | INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
-2026-04-21 17:15:26.748 | INFO  [alembic.runtime.migration] Will assume transactional DDL.
-2026-04-21 17:15:27.791 | INFO  [alembic.runtime.migration] Running upgrade 025 -> 026, Add missing unique constraints to prevent duplicate rows.
-2026-04-21 17:15:27.830 | Traceback (most recent call last):
-2026-04-21 17:15:27.830 |   File "/usr/local/bin/alembic", line 10, in <module>
-2026-04-21 17:15:27.831 |     sys.exit(main())
-2026-04-21 17:15:27.831 |              ^^^^^^
-2026-04-21 17:15:27.831 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 1047, in main
-2026-04-21 17:15:27.831 |     CommandLine(prog=prog).main(argv=argv)
-2026-04-21 17:15:27.831 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 1037, in main
-2026-04-21 17:15:27.831 |     self.run_cmd(cfg, options)
-2026-04-21 17:15:27.831 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 971, in run_cmd
-2026-04-21 17:15:27.831 |     fn(
-2026-04-21 17:15:27.831 |   File "/usr/local/lib/python3.12/site-packages/alembic/command.py", line 483, in upgrade
-2026-04-21 17:15:27.832 |     script.run_env()
-2026-04-21 17:15:27.832 |   File "/usr/local/lib/python3.12/site-packages/alembic/script/base.py", line 545, in run_env
-2026-04-21 17:15:27.832 |     util.load_python_file(self.dir, "env.py")
-2026-04-21 17:15:27.832 |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 116, in load_python_file
-2026-04-21 17:15:27.832 |     module = load_module_py(module_id, path)
-2026-04-21 17:15:27.832 |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.832 |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 136, in load_module_py
-2026-04-21 17:15:27.832 |     spec.loader.exec_module(module)  # type: ignore
-2026-04-21 17:15:27.833 |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.833 |   File "<frozen importlib._bootstrap_external>", line 999, in exec_module
-2026-04-21 17:15:27.833 |   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-2026-04-21 17:15:27.833 |   File "/app/alembic/env.py", line 74, in <module>
-2026-04-21 17:15:27.835 |     run_migrations_online()
-2026-04-21 17:15:27.835 |   File "/app/alembic/env.py", line 68, in run_migrations_online
-2026-04-21 17:15:27.837 |     asyncio.run(run_async_migrations())
-2026-04-21 17:15:27.837 |   File "/usr/local/lib/python3.12/asyncio/runners.py", line 195, in run
-2026-04-21 17:15:27.838 |     return runner.run(main)
-2026-04-21 17:15:27.838 |            ^^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.838 |   File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
-2026-04-21 17:15:27.838 |     return self._loop.run_until_complete(task)
-2026-04-21 17:15:27.838 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.838 |   File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
-2026-04-21 17:15:27.838 |     return future.result()
-2026-04-21 17:15:27.838 |            ^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.838 |   File "/app/alembic/env.py", line 63, in run_async_migrations
-2026-04-21 17:15:27.840 |     await connection.run_sync(do_run_migrations)
-2026-04-21 17:15:27.840 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py", line 888, in run_sync
-2026-04-21 17:15:27.840 |     return await greenlet_spawn(
-2026-04-21 17:15:27.840 |            ^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.840 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 203, in greenlet_spawn
-2026-04-21 17:15:27.840 |     result = context.switch(value)
-2026-04-21 17:15:27.840 |              ^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.840 |   File "/app/alembic/env.py", line 53, in do_run_migrations
-2026-04-21 17:15:27.843 |     context.run_migrations()
-2026-04-21 17:15:27.843 |   File "<string>", line 8, in run_migrations
-2026-04-21 17:15:27.843 |   File "/usr/local/lib/python3.12/site-packages/alembic/runtime/environment.py", line 969, in run_migrations
-2026-04-21 17:15:27.843 |     self.get_context().run_migrations(**kw)
-2026-04-21 17:15:27.843 |   File "/usr/local/lib/python3.12/site-packages/alembic/runtime/migration.py", line 626, in run_migrations
-2026-04-21 17:15:27.843 |     step.migration_fn(**kw)
-2026-04-21 17:15:27.843 |   File "/app/alembic/versions/026_add_missing_unique_constraints.py", line 57, in upgrade
-2026-04-21 17:15:27.846 |     op.create_unique_constraint(
-2026-04-21 17:15:27.846 |   File "<string>", line 8, in create_unique_constraint
-2026-04-21 17:15:27.846 |   File "<string>", line 3, in create_unique_constraint
-2026-04-21 17:15:27.846 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/ops.py", line 497, in create_unique_constraint
-2026-04-21 17:15:27.846 |     return operations.invoke(op)
-2026-04-21 17:15:27.846 |            ^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.846 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/base.py", line 452, in invoke
-2026-04-21 17:15:27.846 |     return fn(self, operation)
-2026-04-21 17:15:27.846 |            ^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.846 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/toimpl.py", line 222, in create_constraint
-2026-04-21 17:15:27.846 |     operation.to_constraint(operations.migration_context)
-2026-04-21 17:15:27.846 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/ops.py", line 439, in to_constraint
-2026-04-21 17:15:27.846 |     return schema_obj.unique_constraint(
-2026-04-21 17:15:27.846 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.846 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/schemaobj.py", line 132, in unique_constraint
-2026-04-21 17:15:27.846 |     t = sa_schema.Table(
-2026-04-21 17:15:27.846 |         ^^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.846 |   File "<string>", line 2, in __new__
-2026-04-21 17:15:27.846 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/deprecations.py", line 281, in warned
-2026-04-21 17:15:27.847 |     return fn(*args, **kwargs)  # type: ignore[no-any-return]
-2026-04-21 17:15:27.847 |            ^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.847 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/schema.py", line 429, in __new__
-2026-04-21 17:15:27.847 |     return cls._new(*args, **kw)
-2026-04-21 17:15:27.847 |            ^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.847 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/schema.py", line 459, in _new
-2026-04-21 17:15:27.847 |     if key in metadata.tables:
-2026-04-21 17:15:27.847 |        ^^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:15:27.847 | TypeError: unhashable type: 'list'
-2026-04-21 17:16:39.586 | INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
-2026-04-21 17:16:39.586 | INFO  [alembic.runtime.migration] Will assume transactional DDL.
-2026-04-21 17:16:41.238 | INFO  [alembic.runtime.migration] Running upgrade 025 -> 026, Add missing unique constraints to prevent duplicate rows.
-2026-04-21 17:16:41.254 | Traceback (most recent call last):
-2026-04-21 17:16:41.254 |   File "/usr/local/bin/alembic", line 10, in <module>
-2026-04-21 17:16:41.254 |     sys.exit(main())
-2026-04-21 17:16:41.254 |              ^^^^^^
-2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 1047, in main
-2026-04-21 17:16:41.254 |     CommandLine(prog=prog).main(argv=argv)
-2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 1037, in main
-2026-04-21 17:16:41.254 |     self.run_cmd(cfg, options)
-2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 971, in run_cmd
-2026-04-21 17:16:41.254 |     fn(
-2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/command.py", line 483, in upgrade
-2026-04-21 17:16:41.254 |     script.run_env()
-2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/script/base.py", line 545, in run_env
-2026-04-21 17:16:41.254 |     util.load_python_file(self.dir, "env.py")
-2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 116, in load_python_file
-2026-04-21 17:16:41.254 |     module = load_module_py(module_id, path)
-2026-04-21 17:16:41.254 |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.254 |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 136, in load_module_py
-2026-04-21 17:16:41.254 |     spec.loader.exec_module(module)  # type: ignore
-2026-04-21 17:16:41.254 |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.254 |   File "<frozen importlib._bootstrap_external>", line 999, in exec_module
-2026-04-21 17:16:41.254 |   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-2026-04-21 17:16:41.254 |   File "/app/alembic/env.py", line 74, in <module>
-2026-04-21 17:16:41.259 |     run_migrations_online()
-2026-04-21 17:16:41.259 |   File "/app/alembic/env.py", line 68, in run_migrations_online
-2026-04-21 17:16:41.268 |     asyncio.run(run_async_migrations())
-2026-04-21 17:16:41.268 |   File "/usr/local/lib/python3.12/asyncio/runners.py", line 195, in run
-2026-04-21 17:16:41.268 |     return runner.run(main)
-2026-04-21 17:16:41.268 |            ^^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.268 |   File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
-2026-04-21 17:16:41.268 |     return self._loop.run_until_complete(task)
-2026-04-21 17:16:41.268 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.268 |   File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
-2026-04-21 17:16:41.268 |     return future.result()
-2026-04-21 17:16:41.268 |            ^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.268 |   File "/app/alembic/env.py", line 63, in run_async_migrations
-2026-04-21 17:16:41.304 |     await connection.run_sync(do_run_migrations)
-2026-04-21 17:16:41.304 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py", line 888, in run_sync
-2026-04-21 17:16:41.304 |     return await greenlet_spawn(
-2026-04-21 17:16:41.304 |            ^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.304 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 203, in greenlet_spawn
-2026-04-21 17:16:41.304 |     result = context.switch(value)
-2026-04-21 17:16:41.304 |              ^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.304 |   File "/app/alembic/env.py", line 53, in do_run_migrations
-2026-04-21 17:16:41.332 |     context.run_migrations()
-2026-04-21 17:16:41.332 |   File "<string>", line 8, in run_migrations
-2026-04-21 17:16:41.332 |   File "/usr/local/lib/python3.12/site-packages/alembic/runtime/environment.py", line 969, in run_migrations
-2026-04-21 17:16:41.332 |     self.get_context().run_migrations(**kw)
-2026-04-21 17:16:41.332 |   File "/usr/local/lib/python3.12/site-packages/alembic/runtime/migration.py", line 626, in run_migrations
-2026-04-21 17:16:41.332 |     step.migration_fn(**kw)
-2026-04-21 17:16:41.332 |   File "/app/alembic/versions/026_add_missing_unique_constraints.py", line 57, in upgrade
-2026-04-21 17:16:41.365 |     op.create_unique_constraint(
-2026-04-21 17:16:41.365 |   File "<string>", line 8, in create_unique_constraint
-2026-04-21 17:16:41.365 |   File "<string>", line 3, in create_unique_constraint
-2026-04-21 17:16:41.365 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/ops.py", line 497, in create_unique_constraint
-2026-04-21 17:16:41.365 |     return operations.invoke(op)
-2026-04-21 17:16:41.365 |            ^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.365 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/base.py", line 452, in invoke
-2026-04-21 17:16:41.365 |     return fn(self, operation)
-2026-04-21 17:16:41.365 |            ^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.365 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/toimpl.py", line 222, in create_constraint
-2026-04-21 17:16:41.365 |     operation.to_constraint(operations.migration_context)
-2026-04-21 17:16:41.365 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/ops.py", line 439, in to_constraint
-2026-04-21 17:16:41.366 |     return schema_obj.unique_constraint(
-2026-04-21 17:16:41.366 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.366 |   File "/usr/local/lib/python3.12/site-packages/alembic/operations/schemaobj.py", line 132, in unique_constraint
-2026-04-21 17:16:41.366 |     t = sa_schema.Table(
-2026-04-21 17:16:41.366 |         ^^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.366 |   File "<string>", line 2, in __new__
-2026-04-21 17:16:41.366 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/deprecations.py", line 281, in warned
-2026-04-21 17:16:41.366 |     return fn(*args, **kwargs)  # type: ignore[no-any-return]
-2026-04-21 17:16:41.366 |            ^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.366 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/schema.py", line 429, in __new__
-2026-04-21 17:16:41.366 |     return cls._new(*args, **kw)
-2026-04-21 17:16:41.366 |            ^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.366 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/schema.py", line 459, in _new
-2026-04-21 17:16:41.366 |     if key in metadata.tables:
-2026-04-21 17:16:41.366 |        ^^^^^^^^^^^^^^^^^^^^^^
-2026-04-21 17:16:41.366 | TypeError: unhashable type: 'list'
+2026-05-07 01:08:52.737 | INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+2026-05-07 01:08:52.737 | INFO  [alembic.runtime.migration] Will assume transactional DDL.
+2026-05-07 01:08:53.364 | INFO  [alembic.runtime.migration] Running upgrade 028_add_resource_config_snapshots -> 029_add_notification_recipients, Add recipients column to notification_preferences.
+2026-05-07 01:08:54.392 | INFO:     Will watch for changes in these directories: ['/app']
+2026-05-07 01:08:54.393 | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-05-07 01:08:54.393 | INFO:     Started reloader process [10] using WatchFiles
+2026-05-07 01:08:59.480 | {"timestamp": "2026-05-06 17:08:59,479", "level": "INFO", "logger": "root", "message": "Structured logging configured", "correlation_id": "", "user_id": "", "org_id": "", "module": "logging_config", "function": "setup_structured_logging", "line": 114, "extra": {"log_level": "INFO", "json_format": true}}
+2026-05-07 01:09:10.807 | {"timestamp": "2026-05-06 17:09:10,806", "level": "INFO", "logger": "app.cloud_accounts.router", "message": "Initialized cloud_accounts caches: live_data(max=500,ttl=300s), permissions(max=500,ttl=3600s)", "correlation_id": "", "user_id": "", "org_id": "", "module": "router", "function": "<module>", "line": 47}
+2026-05-07 01:09:15.755 | INFO:     Started server process [12]
+2026-05-07 01:09:15.755 | INFO:     Waiting for application startup.
+2026-05-07 01:09:15.757 | {"timestamp": "2026-05-06 17:09:15,756", "level": "INFO", "logger": "app.shared.tracing", "message": "OpenTelemetry tracing disabled (OTEL_ENABLED=False)", "correlation_id": "", "user_id": "", "org_id": "", "module": "tracing", "function": "init_tracing", "line": 41}
+2026-05-07 01:09:15.757 | {"timestamp": "2026-05-06 17:09:15,757", "level": "INFO", "logger": "app.shared.feature_flags", "message": "Feature flag registered: structured_logging (enabled=True)", "correlation_id": "", "user_id": "", "org_id": "", "module": "feature_flags", "function": "register", "line": 22}
+2026-05-07 01:09:15.757 | {"timestamp": "2026-05-06 17:09:15,757", "level": "INFO", "logger": "app.shared.feature_flags", "message": "Feature flag registered: correlation_ids (enabled=True)", "correlation_id": "", "user_id": "", "org_id": "", "module": "feature_flags", "function": "register", "line": 22}
+2026-05-07 01:09:15.757 | {"timestamp": "2026-05-06 17:09:15,757", "level": "INFO", "logger": "app.shared.feature_flags", "message": "Feature flag registered: gzip_compression (enabled=True)", "correlation_id": "", "user_id": "", "org_id": "", "module": "feature_flags", "function": "register", "line": 22}
+2026-05-07 01:09:15.757 | {"timestamp": "2026-05-06 17:09:15,757", "level": "INFO", "logger": "app.shared.feature_flags", "message": "Feature flag registered: csrf_protection (enabled=True)", "correlation_id": "", "user_id": "", "org_id": "", "module": "feature_flags", "function": "register", "line": 22}
+2026-05-07 01:09:15.757 | {"timestamp": "2026-05-06 17:09:15,757", "level": "INFO", "logger": "app.shared.feature_flags", "message": "Feature flag registered: idempotency (enabled=True)", "correlation_id": "", "user_id": "", "org_id": "", "module": "feature_flags", "function": "register", "line": 22}
+2026-05-07 01:09:15.757 | {"timestamp": "2026-05-06 17:09:15,757", "level": "INFO", "logger": "app.shared.feature_flags", "message": "Feature flag registered: mfa (enabled=True)", "correlation_id": "", "user_id": "", "org_id": "", "module": "feature_flags", "function": "register", "line": 22}
+2026-05-07 01:09:15.757 | {"timestamp": "2026-05-06 17:09:15,757", "level": "INFO", "logger": "app.shared.feature_flags", "message": "Feature flag registered: brute_force_protection (enabled=True)", "correlation_id": "", "user_id": "", "org_id": "", "module": "feature_flags", "function": "register", "line": 22}
+2026-05-07 01:09:15.759 | {"timestamp": "2026-05-06 17:09:15,759", "level": "INFO", "logger": "apscheduler.scheduler", "message": "Scheduler started", "correlation_id": "", "user_id": "", "org_id": "", "module": "base", "function": "start", "line": 214}
+2026-05-07 01:09:15.759 | {"timestamp": "2026-05-06 17:09:15,759", "level": "INFO", "logger": "app.scheduler.executor", "message": "APScheduler started", "correlation_id": "", "user_id": "", "org_id": "", "module": "executor", "function": "init_scheduler", "line": 200}
+2026-05-07 01:09:15.990 | {"timestamp": "2026-05-06 17:09:15,989", "level": "INFO", "logger": "app.scheduler.executor", "message": "Loaded 0 enabled schedulers from database", "correlation_id": "", "user_id": "", "org_id": "", "module": "executor", "function": "load_schedulers_from_db", "line": 226}
+2026-05-07 01:09:15.992 | INFO:     Application startup complete.
+2026-05-07 01:09:32.824 | {"timestamp": "2026-05-06 17:09:32,823", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] GET /api/v1/auth/me | token_cookie=False session_cookie=False | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "30d8e322-a22b-40f1-8b23-ee2bc9d3cca9", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:09:32.827 | INFO:     172.18.0.5:44628 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+2026-05-07 01:09:35.898 | INFO:     172.18.0.5:48028 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+2026-05-07 01:09:36.011 | {"timestamp": "2026-05-06 17:09:36,010", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] GET /api/v1/auth/me | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "940a5889-e995-40fd-83f9-1252abfd4e33", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:09:36.019 | {"timestamp": "2026-05-06 17:09:36,018", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/auth/me => authenticated as test@test.com", "correlation_id": "940a5889-e995-40fd-83f9-1252abfd4e33", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:09:36.021 | INFO:     172.18.0.5:48042 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+2026-05-07 01:09:36.139 | {"timestamp": "2026-05-06 17:09:36,138", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "2c8845df-5ac2-4eb4-89db-4096f8a92656", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:09:36.176 | {"timestamp": "2026-05-06 17:09:36,175", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/cache-status | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "75719e00-892f-470e-a21a-dac477717e31", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:09:36.178 | {"timestamp": "2026-05-06 17:09:36,178", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards => authenticated as test@test.com", "correlation_id": "2c8845df-5ac2-4eb4-89db-4096f8a92656", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:09:36.179 | {"timestamp": "2026-05-06 17:09:36,178", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] get_current_org_member called - org_id=2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac, user_id=cb81c868-341c-4d35-bb1d-8a200fcfef0a, email=test@test.com", "correlation_id": "2c8845df-5ac2-4eb4-89db-4096f8a92656", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 40}
+2026-05-07 01:09:36.287 | {"timestamp": "2026-05-06 17:09:36,286", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] Found employee record: id=3ead8649-5d45-43e9-82a9-379dcea251df, role=RolePurpose.MANAGER", "correlation_id": "2c8845df-5ac2-4eb4-89db-4096f8a92656", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 52}
+2026-05-07 01:09:36.292 | {"timestamp": "2026-05-06 17:09:36,292", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/cache-status => authenticated as test@test.com", "correlation_id": "75719e00-892f-470e-a21a-dac477717e31", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:09:36.293 | {"timestamp": "2026-05-06 17:09:36,292", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] get_current_org_member called - org_id=2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac, user_id=cb81c868-341c-4d35-bb1d-8a200fcfef0a, email=test@test.com", "correlation_id": "75719e00-892f-470e-a21a-dac477717e31", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 40}
+2026-05-07 01:09:36.330 | {"timestamp": "2026-05-06 17:09:36,330", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] Found employee record: id=3ead8649-5d45-43e9-82a9-379dcea251df, role=RolePurpose.MANAGER", "correlation_id": "75719e00-892f-470e-a21a-dac477717e31", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 52}
+2026-05-07 01:09:36.357 | INFO:     172.18.0.5:48056 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards HTTP/1.1" 200 OK
+2026-05-07 01:09:36.385 | INFO:     172.18.0.5:48066 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/cache-status HTTP/1.1" 200 OK
+2026-05-07 01:09:36.432 | {"timestamp": "2026-05-06 17:09:36,430", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards/88f9bdcb-187a-4614-973b-b50d54a98140 | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "14321a6d-ba7f-48c0-973c-6f82751a740a", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:09:36.438 | {"timestamp": "2026-05-06 17:09:36,437", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards/88f9bdcb-187a-4614-973b-b50d54a98140 => authenticated as test@test.com", "correlation_id": "14321a6d-ba7f-48c0-973c-6f82751a740a", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:09:36.438 | {"timestamp": "2026-05-06 17:09:36,438", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] get_current_org_member called - org_id=2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac, user_id=cb81c868-341c-4d35-bb1d-8a200fcfef0a, email=test@test.com", "correlation_id": "14321a6d-ba7f-48c0-973c-6f82751a740a", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 40}
+2026-05-07 01:09:36.452 | {"timestamp": "2026-05-06 17:09:36,451", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] Found employee record: id=3ead8649-5d45-43e9-82a9-379dcea251df, role=RolePurpose.MANAGER", "correlation_id": "14321a6d-ba7f-48c0-973c-6f82751a740a", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 52}
+2026-05-07 01:09:36.467 | INFO:     172.18.0.5:48080 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards/88f9bdcb-187a-4614-973b-b50d54a98140 HTTP/1.1" 200 OK
+2026-05-07 01:09:36.529 | {"timestamp": "2026-05-06 17:09:36,528", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] POST /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards/widgets/data | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:09:36.538 | {"timestamp": "2026-05-06 17:09:36,537", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards/widgets/data => authenticated as test@test.com", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:09:36.538 | {"timestamp": "2026-05-06 17:09:36,538", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] get_current_org_member called - org_id=2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac, user_id=cb81c868-341c-4d35-bb1d-8a200fcfef0a, email=test@test.com", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 40}
+2026-05-07 01:09:36.557 | {"timestamp": "2026-05-06 17:09:36,556", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] Found employee record: id=3ead8649-5d45-43e9-82a9-379dcea251df, role=RolePurpose.MANAGER", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 52}
+2026-05-07 01:09:36.614 | {"timestamp": "2026-05-06 17:09:36,613", "level": "INFO", "logger": "app.database", "message": "MongoDB client initialized with pool_size=50", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "database", "function": "get_mongo_client", "line": 61}
+2026-05-07 01:09:36.651 | {"timestamp": "2026-05-06 17:09:36,650", "level": "WARNING", "logger": "app.cost_cache.service", "message": "Returning stale breakdown cache for org 2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac, group_by=cloud", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "service", "function": "get_cached_breakdown", "line": 188}
+2026-05-07 01:09:36.658 | {"timestamp": "2026-05-06 17:09:36,657", "level": "WARNING", "logger": "app.cost_cache.service", "message": "Returning stale cache for org 2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac: age=24.3h", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "service", "function": "get_cached_summary", "line": 115}
+2026-05-07 01:09:41.058 | {"timestamp": "2026-05-06 17:09:41,058", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/notifications/preferences | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "d08c7e4d-1dc5-493c-b11f-d41fc9ffe700", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:09:41.066 | {"timestamp": "2026-05-06 17:09:41,065", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/notifications/preferences => authenticated as test@test.com", "correlation_id": "d08c7e4d-1dc5-493c-b11f-d41fc9ffe700", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:09:41.066 | {"timestamp": "2026-05-06 17:09:41,066", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] get_current_org_member called - org_id=2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac, user_id=cb81c868-341c-4d35-bb1d-8a200fcfef0a, email=test@test.com", "correlation_id": "d08c7e4d-1dc5-493c-b11f-d41fc9ffe700", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 40}
+2026-05-07 01:09:41.082 | {"timestamp": "2026-05-06 17:09:41,081", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] Found employee record: id=3ead8649-5d45-43e9-82a9-379dcea251df, role=RolePurpose.MANAGER", "correlation_id": "d08c7e4d-1dc5-493c-b11f-d41fc9ffe700", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 52}
+2026-05-07 01:09:41.121 | INFO:     172.18.0.5:48100 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/notifications/preferences HTTP/1.1" 200 OK
+2026-05-07 01:09:48.329 | {"timestamp": "2026-05-06 17:09:48,328", "level": "INFO", "logger": "azure.identity._internal.get_token_mixin", "message": "ClientSecretCredential.get_token_info succeeded", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "get_token_mixin", "function": "_get_token_base", "line": 139}
+2026-05-07 01:09:50.103 | {"timestamp": "2026-05-06 17:09:50,101", "level": "INFO", "logger": "azure.identity._internal.get_token_mixin", "message": "ClientSecretCredential.get_token_info succeeded", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "get_token_mixin", "function": "_get_token_base", "line": 139}
+2026-05-07 01:09:50.702 | /usr/local/lib/python3.12/site-packages/azure/mgmt/sql/models/_models_py3.py:6882: SyntaxWarning: invalid escape sequence '\ '
+2026-05-07 01:09:50.703 |   :param maintenance_window_cycles: Available maintenance cycles e.g. {Saturday, 0, 48\ *60},
+2026-05-07 01:09:50.704 | /usr/local/lib/python3.12/site-packages/azure/mgmt/sql/models/_models_py3.py:7657: SyntaxWarning: invalid escape sequence '\S'
+2026-05-07 01:09:50.704 |   KEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Time Zones.
+2026-05-07 01:09:50.709 | /usr/local/lib/python3.12/site-packages/azure/mgmt/sql/models/_models_py3.py:9212: SyntaxWarning: invalid escape sequence '\S'
+2026-05-07 01:09:50.709 |   KEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Time Zones.
+2026-05-07 01:09:51.638 | {"timestamp": "2026-05-06 17:09:51,637", "level": "INFO", "logger": "azure.identity._internal.get_token_mixin", "message": "ClientSecretCredential.get_token_info succeeded", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "get_token_mixin", "function": "_get_token_base", "line": 139}
+2026-05-07 01:09:52.068 | {"timestamp": "2026-05-06 17:09:52,067", "level": "WARNING", "logger": "msrest.serialization", "message": "Datetime with no tzinfo will be considered UTC.", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "serialization", "function": "serialize_iso", "line": 1123}
+2026-05-07 01:09:52.068 | {"timestamp": "2026-05-06 17:09:52,068", "level": "WARNING", "logger": "msrest.serialization", "message": "Datetime with no tzinfo will be considered UTC.", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "serialization", "function": "serialize_iso", "line": 1123}
+2026-05-07 01:09:52.435 | {"timestamp": "2026-05-06 17:09:52,435", "level": "INFO", "logger": "azure.identity._internal.get_token_mixin", "message": "ClientSecretCredential.get_token_info succeeded", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "get_token_mixin", "function": "_get_token_base", "line": 139}
+2026-05-07 01:09:55.764 | /usr/local/lib/python3.12/site-packages/azure/mgmt/advisor/operations/_recommendations_operations.py:165: SyntaxWarning: invalid escape sequence '\ '
+2026-05-07 01:09:55.764 |   properties ['ResourceId', 'ResourceGroup', 'RecommendationTypeGuid', '\ `Category
+2026-05-07 01:09:56.282 | {"timestamp": "2026-05-06 17:09:56,281", "level": "INFO", "logger": "azure.identity._internal.get_token_mixin", "message": "ClientSecretCredential.get_token_info succeeded", "correlation_id": "8ffb3aac-dc54-4d11-a6af-9152726d500a", "user_id": "", "org_id": "", "module": "get_token_mixin", "function": "_get_token_base", "line": 139}
+2026-05-07 01:09:57.039 | INFO:     172.18.0.5:48090 - "POST /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards/widgets/data HTTP/1.1" 200 OK
+2026-05-07 01:10:05.748 | INFO:     172.18.0.5:49074 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+2026-05-07 01:10:05.871 | {"timestamp": "2026-05-06 17:10:05,871", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] GET /api/v1/organizations | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "0226c0be-390b-49f4-be33-cb6c77fb1a92", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:10:05.877 | {"timestamp": "2026-05-06 17:10:05,876", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/organizations => authenticated as test@test.com", "correlation_id": "0226c0be-390b-49f4-be33-cb6c77fb1a92", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:10:05.903 | INFO:     172.18.0.5:49078 - "GET /api/v1/organizations HTTP/1.1" 200 OK
+2026-05-07 01:10:05.974 | {"timestamp": "2026-05-06 17:10:05,973", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] GET /api/v1/auth/me | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "f053726c-7349-4cfb-b23d-90d38f159651", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:10:05.980 | {"timestamp": "2026-05-06 17:10:05,979", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/auth/me => authenticated as test@test.com", "correlation_id": "f053726c-7349-4cfb-b23d-90d38f159651", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:10:05.982 | INFO:     172.18.0.5:49092 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+2026-05-07 01:10:06.059 | {"timestamp": "2026-05-06 17:10:06,059", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/cache-status | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "a74c86de-b855-4c4b-9723-2e2cda45d412", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:10:06.064 | {"timestamp": "2026-05-06 17:10:06,063", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "ebe13c80-8e2f-416b-8e05-b0b917afe2ad", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:10:06.069 | {"timestamp": "2026-05-06 17:10:06,069", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/cache-status => authenticated as test@test.com", "correlation_id": "a74c86de-b855-4c4b-9723-2e2cda45d412", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:10:06.069 | {"timestamp": "2026-05-06 17:10:06,069", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] get_current_org_member called - org_id=2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac, user_id=cb81c868-341c-4d35-bb1d-8a200fcfef0a, email=test@test.com", "correlation_id": "a74c86de-b855-4c4b-9723-2e2cda45d412", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 40}
+2026-05-07 01:10:06.070 | {"timestamp": "2026-05-06 17:10:06,070", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards => authenticated as test@test.com", "correlation_id": "ebe13c80-8e2f-416b-8e05-b0b917afe2ad", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:10:06.071 | {"timestamp": "2026-05-06 17:10:06,070", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] get_current_org_member called - org_id=2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac, user_id=cb81c868-341c-4d35-bb1d-8a200fcfef0a, email=test@test.com", "correlation_id": "ebe13c80-8e2f-416b-8e05-b0b917afe2ad", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 40}
+2026-05-07 01:10:06.087 | {"timestamp": "2026-05-06 17:10:06,086", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] Found employee record: id=3ead8649-5d45-43e9-82a9-379dcea251df, role=RolePurpose.MANAGER", "correlation_id": "a74c86de-b855-4c4b-9723-2e2cda45d412", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 52}
+2026-05-07 01:10:06.090 | {"timestamp": "2026-05-06 17:10:06,090", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] Found employee record: id=3ead8649-5d45-43e9-82a9-379dcea251df, role=RolePurpose.MANAGER", "correlation_id": "ebe13c80-8e2f-416b-8e05-b0b917afe2ad", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 52}
+2026-05-07 01:10:06.108 | INFO:     172.18.0.5:49104 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/expenses/cache-status HTTP/1.1" 200 OK
+2026-05-07 01:10:06.108 | INFO:     172.18.0.5:49120 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards HTTP/1.1" 200 OK
+2026-05-07 01:10:06.180 | {"timestamp": "2026-05-06 17:10:06,180", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards/88f9bdcb-187a-4614-973b-b50d54a98140 | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "f1727f56-340c-4a45-89ff-95f9f34b169f", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:10:06.185 | {"timestamp": "2026-05-06 17:10:06,185", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards/88f9bdcb-187a-4614-973b-b50d54a98140 => authenticated as test@test.com", "correlation_id": "f1727f56-340c-4a45-89ff-95f9f34b169f", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:10:06.185 | {"timestamp": "2026-05-06 17:10:06,185", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] get_current_org_member called - org_id=2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac, user_id=cb81c868-341c-4d35-bb1d-8a200fcfef0a, email=test@test.com", "correlation_id": "f1727f56-340c-4a45-89ff-95f9f34b169f", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 40}
+2026-05-07 01:10:06.198 | {"timestamp": "2026-05-06 17:10:06,197", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] Found employee record: id=3ead8649-5d45-43e9-82a9-379dcea251df, role=RolePurpose.MANAGER", "correlation_id": "f1727f56-340c-4a45-89ff-95f9f34b169f", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 52}
+2026-05-07 01:10:06.214 | INFO:     172.18.0.5:49124 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards/88f9bdcb-187a-4614-973b-b50d54a98140 HTTP/1.1" 200 OK
+2026-05-07 01:10:06.276 | {"timestamp": "2026-05-06 17:10:06,275", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] POST /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards/widgets/data | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "46df78e9-38a0-4907-a9e3-f943415db4df", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:10:06.284 | {"timestamp": "2026-05-06 17:10:06,283", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards/widgets/data => authenticated as test@test.com", "correlation_id": "46df78e9-38a0-4907-a9e3-f943415db4df", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:10:06.285 | {"timestamp": "2026-05-06 17:10:06,285", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] get_current_org_member called - org_id=2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac, user_id=cb81c868-341c-4d35-bb1d-8a200fcfef0a, email=test@test.com", "correlation_id": "46df78e9-38a0-4907-a9e3-f943415db4df", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 40}
+2026-05-07 01:10:06.308 | {"timestamp": "2026-05-06 17:10:06,308", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] Found employee record: id=3ead8649-5d45-43e9-82a9-379dcea251df, role=RolePurpose.MANAGER", "correlation_id": "46df78e9-38a0-4907-a9e3-f943415db4df", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 52}
+2026-05-07 01:10:06.338 | {"timestamp": "2026-05-06 17:10:06,337", "level": "WARNING", "logger": "app.cost_cache.service", "message": "Returning stale breakdown cache for org 2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac, group_by=cloud", "correlation_id": "46df78e9-38a0-4907-a9e3-f943415db4df", "user_id": "", "org_id": "", "module": "service", "function": "get_cached_breakdown", "line": 188}
+2026-05-07 01:10:06.340 | {"timestamp": "2026-05-06 17:10:06,340", "level": "WARNING", "logger": "app.cost_cache.service", "message": "Returning stale cache for org 2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac: age=24.3h", "correlation_id": "46df78e9-38a0-4907-a9e3-f943415db4df", "user_id": "", "org_id": "", "module": "service", "function": "get_cached_summary", "line": 115}
+2026-05-07 01:10:06.384 | INFO:     172.18.0.5:49126 - "POST /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/dashboards/widgets/data HTTP/1.1" 200 OK
+2026-05-07 01:10:10.909 | {"timestamp": "2026-05-06 17:10:10,908", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/notifications/preferences | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "8278ed1d-5f9b-420b-90a0-bc43977baa7d", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:10:10.914 | {"timestamp": "2026-05-06 17:10:10,914", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/notifications/preferences => authenticated as test@test.com", "correlation_id": "8278ed1d-5f9b-420b-90a0-bc43977baa7d", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:10:10.914 | {"timestamp": "2026-05-06 17:10:10,914", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] get_current_org_member called - org_id=2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac, user_id=cb81c868-341c-4d35-bb1d-8a200fcfef0a, email=test@test.com", "correlation_id": "8278ed1d-5f9b-420b-90a0-bc43977baa7d", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 40}
+2026-05-07 01:10:10.927 | {"timestamp": "2026-05-06 17:10:10,926", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] Found employee record: id=3ead8649-5d45-43e9-82a9-379dcea251df, role=RolePurpose.MANAGER", "correlation_id": "8278ed1d-5f9b-420b-90a0-bc43977baa7d", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 52}
+2026-05-07 01:10:10.960 | INFO:     172.18.0.5:49136 - "GET /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/notifications/preferences HTTP/1.1" 200 OK
+2026-05-07 01:10:55.116 | {"timestamp": "2026-05-06 17:10:55,116", "level": "WARNING", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] POST /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/notifications/test | token_cookie=True session_cookie=True | xfwd=172.18.0.1 realip=172.18.0.1 client=172.18.0.5 | ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 | fp=64c3a8a3", "correlation_id": "01f5f192-2df0-4fce-b1c3-d2754376418e", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 62}
+2026-05-07 01:10:55.127 | {"timestamp": "2026-05-06 17:10:55,127", "level": "INFO", "logger": "app.auth.dependencies", "message": "[AUTH-DEBUG] /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/notifications/test => authenticated as test@test.com", "correlation_id": "01f5f192-2df0-4fce-b1c3-d2754376418e", "user_id": "", "org_id": "", "module": "dependencies", "function": "get_current_user", "line": 115}
+2026-05-07 01:10:55.128 | {"timestamp": "2026-05-06 17:10:55,128", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] get_current_org_member called - org_id=2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac, user_id=cb81c868-341c-4d35-bb1d-8a200fcfef0a, email=test@test.com", "correlation_id": "01f5f192-2df0-4fce-b1c3-d2754376418e", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 40}
+2026-05-07 01:10:55.144 | {"timestamp": "2026-05-06 17:10:55,143", "level": "INFO", "logger": "app.shared.org_access", "message": "[DEBUG] Found employee record: id=3ead8649-5d45-43e9-82a9-379dcea251df, role=RolePurpose.MANAGER", "correlation_id": "01f5f192-2df0-4fce-b1c3-d2754376418e", "user_id": "", "org_id": "", "module": "org_access", "function": "get_current_org_member", "line": 52}
+2026-05-07 01:10:55.590 | {"timestamp": "2026-05-06 17:10:55,589", "level": "INFO", "logger": "app.notifications.email_service", "message": "SES email sent to test@test.com: [TEST] [CostPilot] Daily Cost Summary \u2014 Mar 14, 2026: $1,234.56 (+5% vs avg) (MessageId: 010e019dfe4565d0-440eaf34-6868-45a5-8f35-c65507b66ed8-000000)", "correlation_id": "01f5f192-2df0-4fce-b1c3-d2754376418e", "user_id": "", "org_id": "", "module": "email_service", "function": "send_email_ses", "line": 259}
+2026-05-07 01:10:55.612 | INFO:     172.18.0.5:60386 - "POST /api/v1/organizations/2e8cbf3b-46ba-4833-bc13-42d99ea5a5ac/notifications/test HTTP/1.1" 201 Created
+2026-05-07 01:16:45.991 | Traceback (most recent call last):
+2026-05-07 01:16:45.991 |   File "/usr/local/bin/uvicorn", line 10, in <module>
+2026-05-07 01:16:45.991 |     sys.exit(main())
+2026-05-07 01:16:45.991 |              ^^^^^^
+2026-05-07 01:16:45.991 |   File "/usr/local/lib/python3.12/site-packages/click/core.py", line 1514, in __call__
+2026-05-07 01:16:45.992 |     return self.main(*args, **kwargs)
+2026-05-07 01:16:45.992 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-07 01:16:45.992 |   File "/usr/local/lib/python3.12/site-packages/click/core.py", line 1435, in main
+2026-05-07 01:16:45.992 |     rv = self.invoke(ctx)
+2026-05-07 01:16:45.992 |          ^^^^^^^^^^^^^^^^
+2026-05-07 01:16:45.992 |   File "/usr/local/lib/python3.12/site-packages/click/core.py", line 1298, in invoke
+2026-05-07 01:16:45.993 |     return ctx.invoke(self.callback, **ctx.params)
+2026-05-07 01:16:45.993 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-07 01:16:45.993 |   File "/usr/local/lib/python3.12/site-packages/click/core.py", line 853, in invoke
+2026-05-07 01:16:45.993 |     return callback(*args, **kwargs)
+2026-05-07 01:16:45.993 |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-07 01:16:45.993 |   File "/usr/local/lib/python3.12/site-packages/uvicorn/main.py", line 441, in main
+2026-05-07 01:16:45.993 |     run(
+2026-05-07 01:16:45.993 |   File "/usr/local/lib/python3.12/site-packages/uvicorn/main.py", line 612, in run
+2026-05-07 01:16:45.993 |     ChangeReload(config, target=server.run, sockets=[sock]).run()
+2026-05-07 01:16:45.993 |   File "/usr/local/lib/python3.12/site-packages/uvicorn/supervisors/basereload.py", line 52, in run
+2026-05-07 01:16:45.993 |     for changes in self:
+2026-05-07 01:16:45.994 |                    ^^^^
+2026-05-07 01:16:45.994 |   File "/usr/local/lib/python3.12/site-packages/uvicorn/supervisors/basereload.py", line 71, in __next__
+2026-05-07 01:16:45.994 |     return self.should_restart()
+2026-05-07 01:16:45.994 |            ^^^^^^^^^^^^^^^^^^^^^
+2026-05-07 01:16:45.994 |   File "/usr/local/lib/python3.12/site-packages/uvicorn/supervisors/watchfilesreload.py", line 82, in should_restart
+2026-05-07 01:16:45.994 |     changes = next(self.watcher)
+2026-05-07 01:16:45.994 |               ^^^^^^^^^^^^^^^^^^
+2026-05-07 01:16:45.994 |   File "/usr/local/lib/python3.12/site-packages/watchfiles/main.py", line 130, in watch
+2026-05-07 01:16:45.994 |     raw_changes = watcher.watch(debounce, step, rust_timeout, stop_event)
+2026-05-07 01:16:45.994 |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-07 01:16:45.994 | _rust_notify.WatchfilesRustInternalError: error in underlying watcher: Input/output error (os error 5)
+2026-05-08 01:05:04.420 | Traceback (most recent call last):
+2026-05-08 01:05:04.421 |   File "/usr/local/bin/alembic", line 10, in <module>
+2026-05-08 01:05:04.421 |     sys.exit(main())
+2026-05-08 01:05:04.421 |              ^^^^^^
+2026-05-08 01:05:04.421 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 1047, in main
+2026-05-08 01:05:04.421 |     CommandLine(prog=prog).main(argv=argv)
+2026-05-08 01:05:04.421 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 1037, in main
+2026-05-08 01:05:04.421 |     self.run_cmd(cfg, options)
+2026-05-08 01:05:04.421 |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 971, in run_cmd
+2026-05-08 01:05:04.421 |     fn(
+2026-05-08 01:05:04.421 |   File "/usr/local/lib/python3.12/site-packages/alembic/command.py", line 483, in upgrade
+2026-05-08 01:05:04.422 |     script.run_env()
+2026-05-08 01:05:04.422 |   File "/usr/local/lib/python3.12/site-packages/alembic/script/base.py", line 545, in run_env
+2026-05-08 01:05:04.422 |     util.load_python_file(self.dir, "env.py")
+2026-05-08 01:05:04.422 |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 116, in load_python_file
+2026-05-08 01:05:04.422 |     module = load_module_py(module_id, path)
+2026-05-08 01:05:04.422 |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.422 |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 136, in load_module_py
+2026-05-08 01:05:04.422 |     spec.loader.exec_module(module)  # type: ignore
+2026-05-08 01:05:04.422 |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.422 |   File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+2026-05-08 01:05:04.422 |   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2026-05-08 01:05:04.422 |   File "/app/alembic/env.py", line 76, in <module>
+2026-05-08 01:05:04.438 |     run_migrations_online()
+2026-05-08 01:05:04.438 |   File "/app/alembic/env.py", line 70, in run_migrations_online
+2026-05-08 01:05:04.454 |     asyncio.run(run_async_migrations())
+2026-05-08 01:05:04.454 |   File "/usr/local/lib/python3.12/asyncio/runners.py", line 195, in run
+2026-05-08 01:05:04.454 |     return runner.run(main)
+2026-05-08 01:05:04.454 |            ^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.454 |   File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+2026-05-08 01:05:04.454 |     return self._loop.run_until_complete(task)
+2026-05-08 01:05:04.454 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.454 |   File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+2026-05-08 01:05:04.455 |     return future.result()
+2026-05-08 01:05:04.455 |            ^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.455 |   File "/app/alembic/env.py", line 64, in run_async_migrations
+2026-05-08 01:05:04.468 |     async with connectable.connect() as connection:
+2026-05-08 01:05:04.468 |                ^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.468 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/base.py", line 121, in __aenter__
+2026-05-08 01:05:04.469 |     return await self.start(is_ctxmanager=True)
+2026-05-08 01:05:04.469 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.469 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py", line 275, in start
+2026-05-08 01:05:04.469 |     await greenlet_spawn(self.sync_engine.connect)
+2026-05-08 01:05:04.469 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 201, in greenlet_spawn
+2026-05-08 01:05:04.469 |     result = context.throw(*sys.exc_info())
+2026-05-08 01:05:04.469 |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.469 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3293, in connect
+2026-05-08 01:05:04.470 |     return self._connection_cls(self)
+2026-05-08 01:05:04.470 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.470 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 143, in __init__
+2026-05-08 01:05:04.470 |     self._dbapi_connection = engine.raw_connection()
+2026-05-08 01:05:04.470 |                              ^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.470 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3317, in raw_connection
+2026-05-08 01:05:04.470 |     return self.pool.connect()
+2026-05-08 01:05:04.470 |            ^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.470 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+2026-05-08 01:05:04.470 |     return _ConnectionFairy._checkout(self)
+2026-05-08 01:05:04.470 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.470 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+2026-05-08 01:05:04.471 |     fairy = _ConnectionRecord.checkout(pool)
+2026-05-08 01:05:04.471 |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.471 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+2026-05-08 01:05:04.471 |     rec = pool._do_get()
+2026-05-08 01:05:04.471 |           ^^^^^^^^^^^^^^
+2026-05-08 01:05:04.471 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 306, in _do_get
+2026-05-08 01:05:04.471 |     return self._create_connection()
+2026-05-08 01:05:04.471 |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.471 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+2026-05-08 01:05:04.471 |     return _ConnectionRecord(self)
+2026-05-08 01:05:04.471 |            ^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.471 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+2026-05-08 01:05:04.471 |     self.__connect()
+2026-05-08 01:05:04.471 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+2026-05-08 01:05:04.471 |     with util.safe_reraise():
+2026-05-08 01:05:04.471 |          ^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.471 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+2026-05-08 01:05:04.471 |     raise exc_value.with_traceback(exc_tb)
+2026-05-08 01:05:04.471 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+2026-05-08 01:05:04.472 |     self.dbapi_connection = connection = pool._invoke_creator(self)
+2026-05-08 01:05:04.472 |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.472 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+2026-05-08 01:05:04.472 |     return dialect.connect(*cargs_tup, **cparams)
+2026-05-08 01:05:04.472 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.472 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+2026-05-08 01:05:04.472 |     return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+2026-05-08 01:05:04.472 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.472 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 955, in connect
+2026-05-08 01:05:04.472 |     await_only(creator_fn(*arg, **kw)),
+2026-05-08 01:05:04.472 |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.472 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+2026-05-08 01:05:04.472 |     return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+2026-05-08 01:05:04.472 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.472 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+2026-05-08 01:05:04.473 |     value = await result
+2026-05-08 01:05:04.473 |             ^^^^^^^^^^^^
+2026-05-08 01:05:04.473 |   File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 2443, in connect
+2026-05-08 01:05:04.473 |     return await connect_utils._connect(
+2026-05-08 01:05:04.473 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.473 |   File "/usr/local/lib/python3.12/site-packages/asyncpg/connect_utils.py", line 1249, in _connect
+2026-05-08 01:05:04.473 |     raise last_error or exceptions.TargetServerAttributeNotMatched(
+2026-05-08 01:05:04.473 |   File "/usr/local/lib/python3.12/site-packages/asyncpg/connect_utils.py", line 1218, in _connect
+2026-05-08 01:05:04.473 |     conn = await _connect_addr(
+2026-05-08 01:05:04.473 |            ^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.473 |   File "/usr/local/lib/python3.12/site-packages/asyncpg/connect_utils.py", line 1054, in _connect_addr
+2026-05-08 01:05:04.474 |     return await __connect_addr(params, True, *args)
+2026-05-08 01:05:04.474 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.474 |   File "/usr/local/lib/python3.12/site-packages/asyncpg/connect_utils.py", line 1099, in __connect_addr
+2026-05-08 01:05:04.474 |     tr, pr = await connector
+2026-05-08 01:05:04.474 |              ^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.474 |   File "/usr/local/lib/python3.12/site-packages/asyncpg/connect_utils.py", line 969, in _create_ssl_connection
+2026-05-08 01:05:04.474 |     tr, pr = await loop.create_connection(
+2026-05-08 01:05:04.474 |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.474 |   File "/usr/local/lib/python3.12/asyncio/base_events.py", line 1083, in create_connection
+2026-05-08 01:05:04.475 |     infos = await self._ensure_resolved(
+2026-05-08 01:05:04.475 |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.475 |   File "/usr/local/lib/python3.12/asyncio/base_events.py", line 1466, in _ensure_resolved
+2026-05-08 01:05:04.475 |     return await loop.getaddrinfo(host, port, family=family, type=type,
+2026-05-08 01:05:04.475 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.475 |   File "/usr/local/lib/python3.12/asyncio/base_events.py", line 905, in getaddrinfo
+2026-05-08 01:05:04.476 |     return await self.run_in_executor(
+2026-05-08 01:05:04.476 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.476 |   File "/usr/local/lib/python3.12/concurrent/futures/thread.py", line 59, in run
+2026-05-08 01:05:04.476 |     result = self.fn(*self.args, **self.kwargs)
+2026-05-08 01:05:04.476 |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.476 |   File "/usr/local/lib/python3.12/socket.py", line 978, in getaddrinfo
+2026-05-08 01:05:04.477 |     for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+2026-05-08 01:05:04.477 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-05-08 01:05:04.477 | socket.gaierror: [Errno -5] No address associated with hostname

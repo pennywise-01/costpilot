@@ -13,6 +13,7 @@ import {
   message,
   Space,
   Spin,
+  Tag,
 } from 'antd';
 import { useAuthStore } from '@/store/authStore';
 import { useCurrentOrgId } from '@/hooks/useCurrentOrgId';
@@ -236,10 +237,15 @@ const notificationPrefs: NotificationPref[] = [
   { key: 'new_user_joined', label: 'New user joined', description: 'Get notified when a new user joins your organization', defaultChecked: false },
 ];
 
+const MAX_RECIPIENTS = 3;
+
 const NotificationsTab: React.FC = () => {
   const orgId = useCurrentOrgId();
   const [prefs, setPrefs] = useState<Record<string, boolean>>(
     Object.fromEntries(notificationPrefs.map((p) => [p.key, p.defaultChecked])),
+  );
+  const [recipients, setRecipients] = useState<Record<string, string[]>>(
+    Object.fromEntries(notificationPrefs.map((p) => [p.key, []])),
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -247,11 +253,14 @@ const NotificationsTab: React.FC = () => {
   const loadPreferences = useCallback(async () => {
     try {
       const { data } = await notificationsApi.getPreferences(orgId);
-      const loaded: Record<string, boolean> = {};
+      const loadedPrefs: Record<string, boolean> = {};
+      const loadedRecipients: Record<string, string[]> = {};
       for (const p of data.preferences) {
-        loaded[p.notification_type] = p.enabled;
+        loadedPrefs[p.notification_type] = p.enabled;
+        loadedRecipients[p.notification_type] = p.recipients ?? [];
       }
-      setPrefs((prev) => ({ ...prev, ...loaded }));
+      setPrefs((prev) => ({ ...prev, ...loadedPrefs }));
+      setRecipients((prev) => ({ ...prev, ...loadedRecipients }));
     } catch {
       // Use defaults on error
     } finally {
@@ -267,12 +276,35 @@ const NotificationsTab: React.FC = () => {
     setPrefs((prev) => ({ ...prev, [key]: checked }));
   };
 
+  const handleAddRecipient = (key: string, email: string) => {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) return;
+    const current = recipients[key] ?? [];
+    if (current.length >= MAX_RECIPIENTS) {
+      message.warning(`Maximum ${MAX_RECIPIENTS} recipients per notification`);
+      return;
+    }
+    if (current.includes(trimmed)) {
+      message.warning('Email already added');
+      return;
+    }
+    setRecipients((prev) => ({ ...prev, [key]: [...current, trimmed] }));
+  };
+
+  const handleRemoveRecipient = (key: string, email: string) => {
+    setRecipients((prev) => ({
+      ...prev,
+      [key]: (prev[key] ?? []).filter((e) => e !== email),
+    }));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       const preferences = Object.entries(prefs).map(([notification_type, enabled]) => ({
         notification_type,
         enabled,
+        recipients: recipients[notification_type] ?? [],
       }));
       await notificationsApi.savePreferences(orgId, preferences);
       message.success('Notification preferences saved');
@@ -306,7 +338,7 @@ const NotificationsTab: React.FC = () => {
     <Card>
       <Title level={5} style={{ marginTop: 0 }}>Notification Preferences</Title>
       <List
-        itemLayout="horizontal"
+        itemLayout="vertical"
         dataSource={notificationPrefs}
         renderItem={(item) => (
           <List.Item
@@ -326,6 +358,34 @@ const NotificationsTab: React.FC = () => {
             ]}
           >
             <List.Item.Meta title={item.label} description={item.description} />
+            <div style={{ marginTop: 8 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Recipients (max {MAX_RECIPIENTS}) — leave empty to send to your own email
+              </Text>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                {(recipients[item.key] ?? []).map((email) => (
+                  <Tag
+                    key={email}
+                    closable
+                    onClose={() => handleRemoveRecipient(item.key, email)}
+                  >
+                    {email}
+                  </Tag>
+                ))}
+                {(recipients[item.key] ?? []).length < MAX_RECIPIENTS && (
+                  <Input
+                    size="small"
+                    placeholder="Add email & press Enter"
+                    style={{ width: 220 }}
+                    onPressEnter={(e) => {
+                      const input = e.target as HTMLInputElement;
+                      handleAddRecipient(item.key, input.value);
+                      input.value = '';
+                    }}
+                  />
+                )}
+              </div>
+            </div>
           </List.Item>
         )}
       />

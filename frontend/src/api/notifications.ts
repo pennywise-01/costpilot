@@ -3,12 +3,14 @@ import apiClient from './client';
 export interface NotificationPrefItem {
   notification_type: string;
   enabled: boolean;
+  recipients: string[];
 }
 
 export interface NotificationPrefResponse {
   id: string;
   notification_type: string;
   enabled: boolean;
+  recipients: string[];
 }
 
 export interface NotificationPreferencesResponse {

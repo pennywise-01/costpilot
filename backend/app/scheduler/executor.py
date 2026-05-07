@@ -23,6 +23,163 @@ from app.scheduler.models import DeadLetterJob, SchedulerConfig, SchedulerLog, S
 
 logger = logging.getLogger(__name__)
 
+# Budget alert thresholds (percentage of budget limit)
+_BUDGET_ALERT_THRESHOLDS = [80, 100]
+
+
+async def _dispatch_cost_notifications(org_id: str, cache_result) -> None:
+    """Send budget alerts and daily cost summary after a successful cache refresh.
+
+    Runs in a fire-and-forget style — any failure is logged but never
+    propagates to the caller so it cannot break the scheduler run.
+    """
+    try:
+        from app.notifications.service import (
+            send_notification,
+            check_preferences_for_users,
+        )
+        from app.shared.enums import NotificationType
+        from app.organizations.models import Employee
+        from app.organizations.service import get_organization
+        from app.pools.service import get_pool_tree
+        from app.auth.models import User
+        from app.cost_cache.models import CostCache
+        from app.cloud_accounts.models import CloudAccount
+
+        async with async_session_factory() as db:
+            # --- Resolve org members ---
+            org_employees_result = await db.execute(
+                select(Employee).where(
+                    Employee.organization_id == org_id,
+                    Employee.deleted_at.is_(None),
+                )
+            )
+            org_employees = list(org_employees_result.scalars().all())
+            if not org_employees:
+                return
+
+            user_ids = [e.auth_user_id for e in org_employees]
+
+            # --- Fetch per-account cost data from DB ---
+            account_costs_result = await db.execute(
+                select(CostCache, CloudAccount.name, CloudAccount.type)
+                .join(CloudAccount, CostCache.cloud_account_id == CloudAccount.id)
+                .where(
+                    CostCache.organization_id == org_id,
+                    CostCache.cache_type == "summary",
+                    CostCache.cloud_account_id.is_not(None),
+                    CloudAccount.deleted_at.is_(None),
+                )
+            )
+            account_rows = account_costs_result.all()
+
+            # --- Budget alert ---
+            try:
+                org = await get_organization(db, org_id)
+                budget_limit = 0.0
+                if org.pool_id:
+                    pools = await get_pool_tree(db, org_id)
+                    for p in pools:
+                        if p.id == org.pool_id:
+                            budget_limit = float(p.limit)
+                            break
+
+                if budget_limit > 0:
+                    spent = cache_result.this_month_total
+                    pct = spent / budget_limit * 100
+
+                    # Check if any threshold is crossed
+                    triggered = any(pct >= t for t in _BUDGET_ALERT_THRESHOLDS)
+                    if triggered:
+                        prefs = await check_preferences_for_users(
+                            db, user_ids, org_id, NotificationType.BUDGET_ALERTS
+                        )
+                        # Build top cost drivers from per-account data
+                        top_drivers = []
+                        for cache_entry, acct_name, _ in account_rows:
+                            if float(cache_entry.this_month_total) > 0:
+                                top_drivers.append({
+                                    "name": acct_name,
+                                    "cost": float(cache_entry.this_month_total),
+                                })
+                        top_drivers.sort(key=lambda d: d["cost"], reverse=True)
+
+                        alert_data = {
+                            "budget_name": org.name,
+                            "current_spend": spent,
+                            "budget_limit": budget_limit,
+                            "top_drivers": top_drivers[:5],
+                        }
+                        for uid, enabled in prefs.items():
+                            if enabled:
+                                user_result = await db.execute(
+                                    select(User).where(
+                                        User.id == uid,
+                                        User.deleted_at.is_(None),
+                                    ).limit(1)
+                                )
+                                user = user_result.scalar_one_or_none()
+                                if user:
+                                    await send_notification(
+                                        db, user, org_id,
+                                        NotificationType.BUDGET_ALERTS,
+                                        alert_data,
+                                    )
+            except Exception:
+                logger.exception(
+                    "Failed to send BUDGET_ALERTS for org %s", org_id
+                )
+
+            # --- Daily cost summary ---
+            try:
+                from datetime import date as _date
+
+                prefs = await check_preferences_for_users(
+                    db, user_ids, org_id, NotificationType.DAILY_COST_SUMMARY
+                )
+                enabled_uids = [uid for uid, en in prefs.items() if en]
+                if enabled_uids:
+                    # Build provider breakdown from per-account data
+                    by_provider: dict[str, float] = {}
+                    for cache_entry, _, cloud_type in account_rows:
+                        cloud = cloud_type or "unknown"
+                        by_provider[cloud] = by_provider.get(cloud, 0) + float(cache_entry.this_month_total)
+                    by_provider_list = [
+                        {"name": k, "cost": v}
+                        for k, v in sorted(by_provider.items(), key=lambda x: x[1], reverse=True)
+                    ]
+
+                    summary_data = {
+                        "date": _date.today().strftime("%b %d, %Y"),
+                        "total_spend": cache_result.this_month_total,
+                        "avg_spend": cache_result.last_month_total / 30 if cache_result.last_month_total else 0,
+                        "by_provider": by_provider_list[:5],
+                        "top_services": [],
+                    }
+                    for uid in enabled_uids:
+                        user_result = await db.execute(
+                            select(User).where(
+                                User.id == uid,
+                                User.deleted_at.is_(None),
+                            ).limit(1)
+                        )
+                        user = user_result.scalar_one_or_none()
+                        if user:
+                            await send_notification(
+                                db, user, org_id,
+                                NotificationType.DAILY_COST_SUMMARY,
+                                summary_data,
+                            )
+            except Exception:
+                logger.exception(
+                    "Failed to send DAILY_COST_SUMMARY for org %s", org_id
+                )
+
+    except Exception:
+        logger.exception(
+            "Unexpected error in _dispatch_cost_notifications for org %s", org_id
+        )
+
 # Global scheduler instance
 _scheduler: AsyncIOScheduler | None = None
 
@@ -248,6 +405,18 @@ async def execute_scheduler_job(scheduler_id: str, existing_run_id: str | None =
                                 },
                             )
                         await session.commit()
+
+                # Dispatch budget alerts & daily cost summary (fire-and-forget)
+                if cache_result.success and cache_result.this_month_total > 0:
+                    try:
+                        await _dispatch_cost_notifications(
+                            config.organization_id, cache_result
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Notification dispatch failed for org %s",
+                            config.organization_id,
+                        )
             except Exception as e:
                 error_msg = str(e)
                 results["expenses"]["error"] = error_msg

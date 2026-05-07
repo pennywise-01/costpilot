@@ -1,10 +1,13 @@
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, Enum as SAEnum, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, String, Text, Enum as SAEnum, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.shared.models import BaseModel, OptimisticLockingMixin
 from app.shared.enums import NotificationType
+
+MAX_RECIPIENTS = 3
 
 
 class NotificationPreference(BaseModel, OptimisticLockingMixin):
@@ -20,6 +23,9 @@ class NotificationPreference(BaseModel, OptimisticLockingMixin):
         SAEnum(NotificationType, name="notificationtype", values_callable=lambda e: [x.value for x in e]), nullable=False
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    recipients: Mapped[list[str]] = mapped_column(
+        JSON, default=list, nullable=False
+    )
 
     __table_args__ = (
         UniqueConstraint(

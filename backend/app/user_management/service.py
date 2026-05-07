@@ -658,7 +658,47 @@ async def accept_invitation(
         UserAction.ORG_JOINED, user.id,
         resource_type="organization", resource_id=invitation.organization_id
     )
-    
+
+    # Notify org admins/owners about the new user (fire-and-forget)
+    try:
+        from app.notifications.service import send_notification, check_preferences_for_users
+        from app.shared.enums import NotificationType
+
+        # Get all org employees with auth_user_id
+        org_employees_result = await db.execute(
+            select(Employee).where(
+                Employee.organization_id == invitation.organization_id,
+                Employee.deleted_at.is_(None),
+            )
+        )
+        org_employees = list(org_employees_result.scalars().all())
+        admin_user_ids = [e.auth_user_id for e in org_employees if e.auth_user_id != user.id]
+
+        if admin_user_ids:
+            prefs = await check_preferences_for_users(
+                db, admin_user_ids, invitation.organization_id, NotificationType.NEW_USER_JOINED
+            )
+            inviter_name = invitation.inviter.display_name if invitation.inviter else None
+            notification_data = {
+                "user_name": data.display_name or invitation.email,
+                "user_email": invitation.email,
+                "role": invitation.role.name if invitation.role else "Member",
+                "invited_by": inviter_name,
+            }
+            for uid, enabled in prefs.items():
+                if enabled:
+                    admin_user_result = await db.execute(
+                        select(User).where(User.id == uid, User.deleted_at.is_(None)).limit(1)
+                    )
+                    admin_user = admin_user_result.scalar_one_or_none()
+                    if admin_user:
+                        await send_notification(
+                            db, admin_user, invitation.organization_id,
+                            NotificationType.NEW_USER_JOINED, notification_data,
+                        )
+    except Exception:
+        logger.exception("Failed to send NEW_USER_JOINED notifications")
+
     return user
 
 
